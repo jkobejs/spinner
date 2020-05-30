@@ -1,0 +1,6 @@
+I like when it Spinns!
+
+Links:
+
+ - [[https://jkobejs.github.io/spinner/ Homepage]]
+ - [[https://github.com/jkobejs/spinner GitHub repository]]
