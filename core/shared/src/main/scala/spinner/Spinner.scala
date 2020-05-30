@@ -26,11 +26,11 @@ import zio.duration.Duration
 import java.util.concurrent.TimeUnit
 import spinner.template.Template
 import spinner.template.TemplateElement
-import spinner.template.Key
-import spinner.template.Alignment
-import spinner.template.Style
-import spinner.template.Color
-import spinner.template.Attribute
+// import spinner.template.Key
+// import spinner.template.Alignment
+// import spinner.template.Style
+// import spinner.template.Color
+// import spinner.template.Attribute
 
 case class Spinner private (private val style: SpinnerStyle, private val innerState: InnerState) {
   def spin[R, E, A](effect: ZIO[R, E, A]): ZIO[R with clock.Clock with console.Console, E, A] = {
@@ -45,7 +45,7 @@ case class Spinner private (private val style: SpinnerStyle, private val innerSt
 
   def spinWithState[R, E, A](f: State => ZIO[R, E, A]): ZIO[R with clock.Clock with console.Console, E, A] = {
     for {
-      ref <- ZRef.make(innerState)
+      ref    <- ZRef.make(innerState)
       fiber  <- spinEffect(ref).forever.fork
       result <- f(State(ref))
       _      <- fiber.interruptFork
@@ -89,37 +89,41 @@ case class SpinnerStyle private (
 )
 
 object SpinnerStyle {
+  import spinner.template.interpolator._
+
   def default(): SpinnerStyle =
     SpinnerStyle(
       spinnerStrings = "⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈ ".toCharArray().map(_.toString).toList,
-      template = Template(
-        Seq(
-          TemplateElement.Val("Spinner: "),
-          TemplateElement.Var(
-            key = Key.Spinner,
-            align = Alignment.Left,
-            width = 20,
-            style = Style.empty().fg(Color.Blue)
-          ),
-          TemplateElement.Val(" Message: "),
-          TemplateElement.Var(
-            key = Key.Message,
-            align = Alignment.Left,
-            width = 20,
-            style = Style
-              .empty()
-              .fg(Color.Cyan)
-              .attribute(Attribute.Underlined)
-              .attribute(Attribute.Italic)
-            // .attribute(Attribute.Bold)
-          ),
-          TemplateElement.Val(" Elapsed: "),
-          TemplateElement.Var(
-            key = Key.Elapsed,
-            align = Alignment.Left,
-            width = 20,
-            style = Style.empty().fg(Color.Red).attribute(Attribute.Dim)
-          )
-        ))
+      // template = Template(Nil)
+      template = template"Spinn{er: {spinner:.blue} Mess}age: {msg:.yellow.underlined} Elapsed {elapsed:.green.dim}"
+      // template = Template(
+      //   Seq(
+      //     TemplateElement.Val("Spinner: "),
+      //     TemplateElement.Var(
+      //       key = Key.Spinner,
+      //       align = Alignment.Left,
+      //       width = 20,
+      //       style = Style.empty().fg(Color.Blue)
+      //     ),
+      //     TemplateElement.Val(" Message: "),
+      //     TemplateElement.Var(
+      //       key = Key.Message,
+      //       align = Alignment.Left,
+      //       width = 20,
+      //       style = Style
+      //         .empty()
+      //         .fg(Color.Cyan)
+      //         .attribute(Attribute.Underlined)
+      //         .attribute(Attribute.Italic)
+      //       // .attribute(Attribute.Bold)
+      //     ),
+      //     TemplateElement.Val(" Elapsed: "),
+      //     TemplateElement.Var(
+      //       key = Key.Elapsed,
+      //       align = Alignment.Left,
+      //       width = 20,
+      //       style = Style.empty().fg(Color.Red).attribute(Attribute.Dim)
+      //     )
+      //   ))
     )
 }

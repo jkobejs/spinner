@@ -67,7 +67,7 @@ object Parser {
     }
 
   // Variable
-  def variable[_: P]: P[TemplateElement] = P("{" ~ key ~ alignment.? ~ width.? ~ style.? ~ "}").map {
+  def variable[_: P]: P[TemplateElement] = P("{" ~ key ~ ":" ~ alignment.? ~ width.? ~ style.? ~ "}").map {
     case (key, alignmentOpt, widthOpt, styleOpt) =>
       TemplateElement.Var(
         key = key,
@@ -77,9 +77,12 @@ object Parser {
       )
   }
 
-  def stringChars(c: Char) = c != '{' && c != '}'
+  // def stringChars(c: Char) = c != '{' && c != '}'
+  def stringChars(c: Char) = c == c
 
-  def value[_: P]: P[TemplateElement] = P(CharsWhile(stringChars).!).map(TemplateElement.Val(_))
+  // def value[_: P]: P[TemplateElement] = P(CharsWhile(stringChars).!).map(TemplateElement.Val(_))
+  def value[_: P]: P[TemplateElement] =
+    P(AnyChar.!).filter(str => !parse(str, variable(_)).isSuccess).map(TemplateElement.Val(_))
 
   // Template
   def template[_: P]: P[Template] =

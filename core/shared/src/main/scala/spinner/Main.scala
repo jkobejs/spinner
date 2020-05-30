@@ -44,6 +44,6 @@ object Main extends zio.App {
         } yield ()
       }
 
-      _ <- putStrLn(s"Done")
+      _ <- putStrLn(s"\nDone")
     } yield ()
 }

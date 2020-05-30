@@ -65,8 +65,8 @@ object ParserSpec extends DefaultRunnableSpec {
       assert(true)(equalTo(true))
     },
     test("Parser.style parser succeeds on valid style") {
-        // val colors = 
-        // Gen.fromIterable()
+      // val colors =
+      // Gen.fromIterable()
 
       assert(parse(".blue.on_red.bold.underlined", Parser.style(_)))(
         equalTo(

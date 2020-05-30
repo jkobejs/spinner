@@ -9,7 +9,8 @@ import sbtcrossproject.CrossProject
 
 addCommandAlias("release", ";+clean ;ci-release ;unidoc ;microsite/publishMicrosite")
 addCommandAlias("ci", ";project root ;reload ;+clean ;+test:compile ;+test ;+package ;unidoc ;site/makeMicrosite")
-
+addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
+addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 // ---------------------------------------------------------------------------
 // Dependencies
 
@@ -58,6 +59,11 @@ val ZioVersion = "1.0.0-RC20"
   */
 val FastParseVersion = "2.2.2"
 
+/** Contextual is a small Scala library for defining your own string interpolators—prefixed string literals like url”https://propensive.com/”
+  * [[https://github.com/propensive/contextual]]
+  */
+val ContextualVersion = "1.2.1"
+
 /**
   * Defines common plugins between all projects.
   */
@@ -78,8 +84,9 @@ lazy val sharedSettings = Seq(
   githubOwnerID              := "jkobejs",
   githubRelativeRepositoryID := "spinner",
   organization               := "io.github.jkobejs",
-  scalaVersion               := "2.13.1",
-  crossScalaVersions         := Seq("2.12.10", "2.13.1"),
+  // scalaVersion               := "2.13.1",
+  scalaVersion       := "2.12.10",
+  crossScalaVersions := Seq("2.12.10", "2.13.1"),
   // More version specific compiler options
   scalacOptions ++= (CrossVersion.partialVersion(scalaVersion.value) match {
     case Some((2, v)) if v <= 12 =>
@@ -281,10 +288,11 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
   .settings(
     name := "spinner-core",
     libraryDependencies ++= Seq(
-      "com.lihaoyi" %%% "fastparse"    % FastParseVersion,
-      "dev.zio" %% "zio"               % ZioVersion,
-      "io.estatico" %%% "newtype"      % NewtypeVersion % Provided,
-      "org.typelevel" %%% "simulacrum" % SimulacrumVersion % Provided,
+      "com.lihaoyi" %%% "fastparse"     % FastParseVersion,
+      "dev.zio" %% "zio"                % ZioVersion,
+      "com.propensive" %%% "contextual" % ContextualVersion,
+      "io.estatico" %%% "newtype"       % NewtypeVersion % Provided,
+      "org.typelevel" %%% "simulacrum"  % SimulacrumVersion % Provided,
       // For testing
       "dev.zio" %% "zio-test"     % ZioVersion % Test,
       "dev.zio" %% "zio-test-sbt" % ZioVersion % Test
