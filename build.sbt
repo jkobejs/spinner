@@ -64,6 +64,11 @@ val FastParseVersion = "2.2.2"
   */
 val ContextualVersion = "1.2.1"
 
+/** The purely functional runtime system for Scala
+  * [[https://github.com/typelevel/cats-effect]]
+  */
+val CatsEffectVersion = "2.1.3"
+
 /**
   * Defines common plugins between all projects.
   */
@@ -210,7 +215,7 @@ def defaultCrossProjectConfiguration(pr: CrossProject) = {
 lazy val root = project
   .in(file("."))
   .enablePlugins(ScalaUnidocPlugin)
-  .aggregate(coreJVM, coreJS)
+  .aggregate(coreJVM, coreJS, zioJVM, coreJVM, catsEffectJS, catsEffectJVM)
   .configure(defaultPlugins)
   .settings(sharedSettings)
   .settings(doNotPublishArtifact)
@@ -301,6 +306,49 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
 
 lazy val coreJVM = core.jvm
 lazy val coreJS = core.js
+
+lazy val zio = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Full)
+  .in(file("zio"))
+  .configureCross(defaultCrossProjectConfiguration)
+  .settings(
+    name := "spinner-zio",
+    libraryDependencies ++= Seq(
+      "dev.zio" %% "zio" % ZioVersion,
+      // For testing
+      "dev.zio" %% "zio-test"     % ZioVersion % Test,
+      "dev.zio" %% "zio-test-sbt" % ZioVersion % Test
+    )
+  )
+  .dependsOn(core)
+
+lazy val zioJVM = zio.jvm
+lazy val zioJS = zio.js
+
+lazy val catsEffect = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Full)
+  .in(file("cats-effect"))
+  .configureCross(defaultCrossProjectConfiguration)
+  .settings(
+    name := "spinner-cats-effect",
+    libraryDependencies ++= Seq(
+      "org.typelevel" %%% "cats-effect" % CatsEffectVersion
+    )
+  )
+  .dependsOn(core)
+
+lazy val catsEffectJVM = catsEffect.jvm
+lazy val catsEffectJS = catsEffect.js
+
+lazy val examples = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Full)
+  .in(file("examples"))
+  .configureCross(defaultCrossProjectConfiguration)
+  .settings(
+    name := "examples"
+  )
+  .settings(doNotPublishArtifact)
+  .dependsOn(zio, catsEffect)
 
 // Reloads build.sbt changes whenever detected
 Global / onChangedBuildSource := ReloadOnSourceChanges

@@ -17,22 +17,22 @@
 
 package spinner.template
 
-import spinner.InnerState
+import spinner.RenderState
 import spinner.ansi._
 
-case class Template(
+final case class Template(
   elements: Seq[TemplateElement]
 ) {
-  def render(innerState: InnerState, spinnerStrings: Seq[String], elapsed: Long, prefix: String): String = {
+  def render(renderState: RenderState): String = {
     elements.map {
       case TemplateElement.Val(value) => value
       case variable: TemplateElement.Var =>
         variable.key match {
-          case Key.Spinner => variable.render(spinnerStrings(innerState.index))
-          case Key.Message => variable.render(innerState.message)
-          case Key.ElapsedPrecise => variable.render((elapsed / 1000.0).toString + "s")
-          case Key.Elapsed => variable.render((elapsed / 1000.0).toString + "s")
-          case Key.Prefix => variable.render(prefix)
+          case Key.Spinner => variable.render(renderState.spinner)
+          case Key.Message => variable.render(renderState.message)
+          case Key.ElapsedPrecise => variable.render((renderState.elapsed / 1000.0).toString + "s")
+          case Key.Elapsed => variable.render((renderState.elapsed / 1000.0).toString + "s")
+          case Key.Prefix => variable.render(renderState.prefix)
         }
     }.mkString(Clear.ToBeginningOfLine.toAnsiCode + Navigation.Left(1000).toAnsiCode, "", "")
   }
@@ -41,9 +41,9 @@ case class Template(
 sealed trait TemplateElement
 
 object TemplateElement {
-  case class Val(`val`: String) extends TemplateElement
+  final case class Val(`val`: String) extends TemplateElement
 
-  case class Var(
+  final case class Var(
     key: Key,
     align: Alignment = Alignment.Left,
     width: Int = 20,
@@ -70,7 +70,7 @@ object TemplateElement {
       align match {
         case Alignment.Left => truncated + (" " * diff)
         case Alignment.Center =>
-          if (diff % 2 == 0)  {
+          if (diff % 2 == 0) {
             val padding = diff / 2
             (" " * padding) + truncated + (" " * padding)
           } else {

@@ -15,13 +15,14 @@
  * limitations under the License.
  */
 
-package spinner
+package spinner.example.zio
 
 import zio.console._
 import zio.IO
 import zio.Schedule
 import zio.duration.Duration
 import java.util.concurrent.TimeUnit
+import spinner.zio.Spinner
 
 object Main extends zio.App {
 
