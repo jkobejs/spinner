@@ -17,66 +17,61 @@
 
 package spinner
 
-import zio.ZIO
-import zio.ZRef
-import zio.Ref
-import zio.Schedule
 import zio._
 import zio.duration.Duration
 import java.util.concurrent.TimeUnit
-import spinner.template.Template
-import spinner.template.TemplateElement
-// import spinner.template.Key
-// import spinner.template.Alignment
-// import spinner.template.Style
-// import spinner.template.Color
-// import spinner.template.Attribute
+import spinner.template._
 
-case class Spinner private (private val style: SpinnerStyle, private val innerState: InnerState) {
+case class Spinner private (
+  private val style: SpinnerStyle,
+  private val innerState: InnerState,
+  private val prefix: String) {
   def spin[R, E, A](effect: ZIO[R, E, A]): ZIO[R with clock.Clock with console.Console, E, A] = {
 
     for {
-      ref    <- ZRef.make(innerState)
-      fiber  <- spinEffect(ref).forever.fork
-      result <- effect
-      _      <- fiber.interruptFork
+      ref         <- ZRef.make(innerState)
+      currentTime <- clock.currentTime(TimeUnit.MILLISECONDS)
+      fiber       <- spinEffect(ref, currentTime).forever.fork
+      result      <- effect
+      _           <- fiber.interruptFork
     } yield result
   }
 
   def spinWithState[R, E, A](f: State => ZIO[R, E, A]): ZIO[R with clock.Clock with console.Console, E, A] = {
     for {
-      ref    <- ZRef.make(innerState)
-      fiber  <- spinEffect(ref).forever.fork
-      result <- f(State(ref))
-      _      <- fiber.interruptFork
+      ref         <- ZRef.make(innerState)
+      currentTime <- clock.currentTime(TimeUnit.MILLISECONDS)
+      fiber       <- spinEffect(ref, currentTime).forever.fork
+      result      <- f(State(ref))
+      _           <- fiber.interruptFork
     } yield result
   }
 
-  private def spinEffect(ref: Ref[InnerState]) = {
+  private def spinEffect(ref: Ref[InnerState], startedAt: Long) = {
     (for {
-      innerState <- ref.get
-      _          <- console.putStr(s"\u001B[1K\u001B[1000D${render(innerState, 0, "prefix")}")
-      nextIndex = (innerState.index + 1) % (style.spinnerStrings.length)
+      innerState  <- ref.get
+      currentTime <- clock.currentTime(TimeUnit.MILLISECONDS)
+      _           <- console.putStr(style.template.render(innerState, style.spinner, currentTime - startedAt, prefix))
+      nextIndex = (innerState.index + 1) % (style.spinner.length)
       _ <- ref.set(innerState.copy(index = nextIndex))
     } yield ()).repeat(Schedule.spaced(Duration(100, TimeUnit.MILLISECONDS)))
   }
-
-  private def render(inState: InnerState, currentTime: Long, prefix: String): String =
-    style.template.elements.map {
-      case TemplateElement.Val(value) => value
-      case variable: TemplateElement.Var => variable.render(inState, style.spinnerStrings, currentTime, prefix)
-    }.mkString
-
 }
 
 object Spinner {
-  def default(): Spinner = Spinner(SpinnerStyle.default, InnerState(0, "Spinning...", 0))
+  def default(): Spinner = Spinner(SpinnerStyle.default, InnerState(0, ""), "")
+
+  def apply(spinner: String, template: Template, message: String = "", prefix: String = ""): Spinner =
+    Spinner(SpinnerStyle(spinner.toCharArray().map(_.toString).toSeq, template), InnerState(0, message), prefix)
+
+  def apply(spinner: Seq[String], template: Template, message: String, prefix: String): Spinner =
+    Spinner(SpinnerStyle(spinner, template), InnerState(0, message), prefix: String)
+
 }
 
 case class InnerState private (
   index: Int,
-  message: String,
-  startedAt: Long
+  message: String
 )
 
 case class State private (private val inner: Ref[InnerState]) {
@@ -84,46 +79,22 @@ case class State private (private val inner: Ref[InnerState]) {
 }
 
 case class SpinnerStyle private (
-  spinnerStrings: List[String],
+  spinner: Seq[String],
   template: Template
 )
 
 object SpinnerStyle {
-  import spinner.template.interpolator._
-
   def default(): SpinnerStyle =
     SpinnerStyle(
-      spinnerStrings = "⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈ ".toCharArray().map(_.toString).toList,
-      // template = Template(Nil)
-      template = template"Spinn{er: {spinner:.blue} Mess}age: {msg:.yellow.underlined} Elapsed {elapsed:.green.dim}"
-      // template = Template(
-      //   Seq(
-      //     TemplateElement.Val("Spinner: "),
-      //     TemplateElement.Var(
-      //       key = Key.Spinner,
-      //       align = Alignment.Left,
-      //       width = 20,
-      //       style = Style.empty().fg(Color.Blue)
-      //     ),
-      //     TemplateElement.Val(" Message: "),
-      //     TemplateElement.Var(
-      //       key = Key.Message,
-      //       align = Alignment.Left,
-      //       width = 20,
-      //       style = Style
-      //         .empty()
-      //         .fg(Color.Cyan)
-      //         .attribute(Attribute.Underlined)
-      //         .attribute(Attribute.Italic)
-      //       // .attribute(Attribute.Bold)
-      //     ),
-      //     TemplateElement.Val(" Elapsed: "),
-      //     TemplateElement.Var(
-      //       key = Key.Elapsed,
-      //       align = Alignment.Left,
-      //       width = 20,
-      //       style = Style.empty().fg(Color.Red).attribute(Attribute.Dim)
-      //     )
-      //   ))
+      spinner = "⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈ ".toCharArray().map(_.toString).toSeq,
+      template = Template(
+        Seq(
+          TemplateElement.Var(Key.Prefix),
+          TemplateElement.Var(Key.Spinner),
+          TemplateElement.Val(" "),
+          TemplateElement.Var(Key.Message),
+          TemplateElement.Val(" Elapsed: "),
+          TemplateElement.Var(Key.Elapsed)
+        ))
     )
 }

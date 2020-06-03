@@ -28,22 +28,60 @@ object Main extends zio.App {
   def run(args: List[String]) =
     myAppLogic.exitCode
 
-  val myAppLogic =
+  val myAppLogic = {
+    import spinner.template.interpolator._
+    val indicator1 = Spinner(
+      spinner = "⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈ ",
+      template = template"{prefix:} {spinner:.blue} {msg:>.green} {elapsed_precise:.blue}",
+      message = "Spinning...",
+      prefix = "[1/3]"
+    )
+
+    val indicator2 = Spinner(
+      spinner = List( "🙈 ",
+        "🙈 ",
+        "🙉 ",
+        "🙊 "
+      ),
+      template = template"{prefix:} {spinner:} {msg:<.green.rapid_blink} {elapsed_precise:.blue}",
+      message = "",
+      prefix = "[2/3]"
+    )
+
+    val indicator3 = Spinner(
+      spinner = List(
+        "( ●    )",
+        "(  ●   )",
+        "(   ●  )",
+        "(    ● )",
+        "(     ●)",
+        "(    ● )",
+        "(   ●  )",
+        "(  ●   )",
+        "( ●    )",
+        "(●     )"),
+      template = template"{prefix:} {spinner:} {msg:^.green} {elapsed_precise:.blue.on_white}",
+      message = "Spinning...",
+      prefix = "[3/3]"
+    )
     for {
       _ <- putStrLn("Starting spinner!")
-      _ <- Spinner.default().spin(IO.none.repeat(Schedule.duration(Duration(3, TimeUnit.SECONDS))))
+      _ <- indicator1.spin(IO.none.repeat(Schedule.duration(Duration(3, TimeUnit.SECONDS))))
       _ <- putStrLn("")
-      _ <- Spinner.default().spinWithState { state =>
+      _ <- indicator2.spinWithState { state =>
         for {
-          _ <- state.updateMessage("First effect")
-          _ <- IO.none.repeat(Schedule.duration(Duration(3, TimeUnit.SECONDS)))
-          _ <- state.updateMessage("Second effect")
-          _ <- IO.none.repeat(Schedule.duration(Duration(2, TimeUnit.SECONDS)))
-          _ <- state.updateMessage("Thi effect")
+          _ <- state.updateMessage("1st effect")
+          _ <- IO.none.repeat(Schedule.duration(Duration(1, TimeUnit.SECONDS)))
+          _ <- state.updateMessage("2nd effect")
+          _ <- IO.none.repeat(Schedule.duration(Duration(1, TimeUnit.SECONDS)))
+          _ <- state.updateMessage("3rd effect")
           _ <- IO.none.repeat(Schedule.duration(Duration(1, TimeUnit.SECONDS)))
         } yield ()
       }
+      _ <- putStrLn("")
+      _ <- indicator3.spin(IO.none.repeat(Schedule.duration(Duration(5, TimeUnit.SECONDS))))
 
       _ <- putStrLn(s"\nDone")
     } yield ()
+  }
 }

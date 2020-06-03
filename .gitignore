@@ -5,6 +5,7 @@ TODO
 !/.scalafmt.conf
 .tags*
 .idea*
+.vscode*
 *.log
 .DS_Store
 target/

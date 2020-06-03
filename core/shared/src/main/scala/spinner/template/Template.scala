@@ -18,33 +18,70 @@
 package spinner.template
 
 import spinner.InnerState
+import spinner.ansi._
 
 case class Template(
   elements: Seq[TemplateElement]
-)
+) {
+  def render(innerState: InnerState, spinnerStrings: Seq[String], elapsed: Long, prefix: String): String = {
+    elements.map {
+      case TemplateElement.Val(value) => value
+      case variable: TemplateElement.Var =>
+        variable.key match {
+          case Key.Spinner => variable.render(spinnerStrings(innerState.index))
+          case Key.Message => variable.render(innerState.message)
+          case Key.ElapsedPrecise => variable.render((elapsed / 1000.0).toString + "s")
+          case Key.Elapsed => variable.render((elapsed / 1000.0).toString + "s")
+          case Key.Prefix => variable.render(prefix)
+        }
+    }.mkString(Clear.ToBeginningOfLine.toAnsiCode + Navigation.Left(1000).toAnsiCode, "", "")
+  }
+}
 
 sealed trait TemplateElement
 
 object TemplateElement {
   case class Val(`val`: String) extends TemplateElement
+
   case class Var(
     key: Key,
-    align: Alignment,
-    width: Int,
-    style: Style
+    align: Alignment = Alignment.Left,
+    width: Int = 20,
+    style: Style = Style.empty()
   ) extends TemplateElement {
-    def render(innerState: InnerState, spinnerStrings: List[String], currentTime: Long, prefix: String): String = {
-      key match {
-        case Key.Spinner => applyStyle(spinnerStrings(innerState.index))
-        case Key.Message => applyStyle(innerState.message)
-        case Key.ElapsedPrecise => applyStyle(((currentTime - innerState.startedAt) / 1000.0).toString)
-        case Key.Elapsed => applyStyle(((currentTime - innerState.startedAt) / 1000.0).toString)
-        case Key.Prefix => applyStyle(prefix)
-      }
+
+    def render(message: String): String = {
+      val l = List(
+        Attribute.Reset.toAnsiCode,
+        style.fgAnsiCode,
+        style.bgAnsiCode,
+        style.attributes.map(_.toAnsiCode).mkString,
+        if (key == Key.Message) alignMessage(message) else message,
+        Attribute.Reset.toAnsiCode
+      )
+
+      l.mkString
     }
 
-    private def applyStyle(message: String): String =
-      s"${Console.RESET}${style.attributes.map(_.toAnsi).mkString}${style.fg.map(_.color.toAnsiFg).getOrElse("")}$message${Console.RESET}"
+    private def alignMessage(message: String): String = {
+      val truncated = message.take(width)
+      val diff = width - truncated.size
+
+      align match {
+        case Alignment.Left => truncated + (" " * diff)
+        case Alignment.Center =>
+          if (diff % 2 == 0)  {
+            val padding = diff / 2
+            (" " * padding) + truncated + (" " * padding)
+          } else {
+            val leftPadding = diff / 2
+            val rightPadding = leftPadding + 1
+
+            (" " * leftPadding) + truncated + (" " * rightPadding)
+          }
+        case Alignment.Right => (" " * diff) + truncated
+      }
+    }
   }
 }
 
@@ -59,17 +96,11 @@ object Key {
 
 case class Style(
   fg: Option[ForegroundColor],
-  bg: Option[BackgrounColor],
+  bg: Option[BackgroundColor],
   attributes: Seq[Attribute]
 ) {
-  def fg(color: Color): Style = this.copy(fg = Some(ForegroundColor(color)))
-  def bg(color: Color): Style = this.copy(bg = Some(BackgrounColor(color)))
-  def attribute(attribute: Attribute): Style = this.copy(attributes = attributes.:+(attribute))
-
-  def black(): Style = fg(Color.Black)
-  def red(): Style = fg(Color.Red)
-  def green(): Style = fg(Color.Green)
-  def yellow(): Style = fg(Color.Yellow)
+  def fgAnsiCode = fg.map(_.toAnsiCode).getOrElse("")
+  def bgAnsiCode = bg.map(_.toAnsiCode).getOrElse("")
 }
 
 sealed trait Alignment
@@ -78,87 +109,8 @@ object Alignment {
   final case object Left extends Alignment
   final case object Center extends Alignment
   final case object Right extends Alignment
-
-  def parse(alignment: String): Alignment =
-    alignment match {
-      case "<" => Alignment.Left
-      case "^" => Alignment.Center
-      case ">" => Alignment.Right
-      case _ => Alignment.Left
-    }
 }
 
 object Style {
   def empty(): Style = Style(fg = None, bg = None, attributes = Nil)
-}
-
-sealed trait Color {
-  def toAnsiFg: String
-  def toAnsiBg: String
-}
-
-object Color {
-  final case object Black extends Color {
-    override def toAnsiFg: String = Console.BLACK
-    override def toAnsiBg: String = Console.BLACK_B
-  }
-  final case object Red extends Color {
-    override def toAnsiFg: String = Console.RED
-    override def toAnsiBg: String = Console.RED_B
-  }
-  final case object Green extends Color {
-    override def toAnsiFg: String = Console.GREEN
-    override def toAnsiBg: String = Console.GREEN_B
-  }
-  final case object Yellow extends Color {
-    override def toAnsiFg: String = Console.YELLOW
-    override def toAnsiBg: String = Console.YELLOW_B
-  }
-  final case object Blue extends Color {
-    override def toAnsiFg: String = Console.BLUE
-    override def toAnsiBg: String = Console.BLUE_B
-  }
-  final case object Magenta extends Color {
-    override def toAnsiFg: String = Console.MAGENTA
-    override def toAnsiBg: String = Console.MAGENTA_B
-  }
-  final case object Cyan extends Color {
-    override def toAnsiFg: String = Console.CYAN
-    override def toAnsiBg: String = Console.CYAN_B
-  }
-  final case object White extends Color {
-    override def toAnsiFg: String = Console.WHITE
-    override def toAnsiBg: String = Console.WHITE_B
-  }
-}
-
-case class ForegroundColor(color: Color)
-case class BackgrounColor(color: Color)
-
-sealed trait Attribute {
-  def toAnsi: String
-}
-
-object Attribute {
-  final case object Bold extends Attribute {
-    override def toAnsi: String = Console.BOLD
-  }
-  final case object Dim extends Attribute {
-    override def toAnsi: String = "\u001b[2m"
-  }
-  final case object Italic extends Attribute {
-    override def toAnsi: String = "\u001b[3m"
-  }
-  final case object Underlined extends Attribute {
-    override def toAnsi: String = Console.UNDERLINED
-  }
-  final case object Blink extends Attribute {
-    override def toAnsi: String = Console.BLINK
-  }
-  final case object Reverse extends Attribute {
-    override def toAnsi: String = Console.REVERSED
-  }
-  final case object Hidden extends Attribute {
-    override def toAnsi: String = Console.INVISIBLE
-  }
 }
