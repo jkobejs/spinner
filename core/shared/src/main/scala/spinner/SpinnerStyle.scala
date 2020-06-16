@@ -21,7 +21,8 @@ import spinner.template._
 
 case class SpinnerStyle private (
   spinner: Seq[String],
-  template: Template
+  template: Template,
+  progressChars: Array[Char]
 )
 
 object SpinnerStyle {
@@ -36,6 +37,7 @@ object SpinnerStyle {
           TemplateElement.Var(Key.Message),
           TemplateElement.Val(" Elapsed: "),
           TemplateElement.Var(Key.Elapsed)
-        ))
+        )),
+      progressChars = Array('#', '#', '-')
     )
 }

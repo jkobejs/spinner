@@ -59,6 +59,11 @@ val ZioVersion = "1.0.0-RC20"
   */
 val FastParseVersion = "2.2.2"
 
+/** Fansi is a Scala library to make it easy to deal with fancy colored Ansi strings within your command-line programs.
+  * [[https://github.com/lihaoyi/fansi]]
+  */
+val FansiVersion = "0.2.7"
+
 /** Contextual is a small Scala library for defining your own string interpolators—prefixed string literals like url”https://propensive.com/”
   * [[https://github.com/propensive/contextual]]
   */
@@ -215,7 +220,20 @@ def defaultCrossProjectConfiguration(pr: CrossProject) = {
 lazy val root = project
   .in(file("."))
   .enablePlugins(ScalaUnidocPlugin)
-  .aggregate(coreJVM, coreJS, zioJVM, coreJVM, catsEffectJS, catsEffectJVM)
+  .aggregate(
+    coreJVM,
+    coreJS,
+    zioJVM,
+    coreJVM,
+    catsEffectJS,
+    catsEffectJVM,
+    zioDownloadExampleJVM,
+    zioDownloadExampleJS,
+    catsEffectDownloadExampleJVM,
+    catsEffectDownloadExampleJS,
+    zioFinebarsExampleJVM,
+    zioFinebarsExampleJS
+  )
   .configure(defaultPlugins)
   .settings(sharedSettings)
   .settings(doNotPublishArtifact)
@@ -296,6 +314,7 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
       "com.lihaoyi" %%% "fastparse"     % FastParseVersion,
       "dev.zio" %% "zio"                % ZioVersion,
       "com.propensive" %%% "contextual" % ContextualVersion,
+      "com.lihaoyi" %%% "fansi"         % FansiVersion,
       "io.estatico" %%% "newtype"       % NewtypeVersion % Provided,
       "org.typelevel" %%% "simulacrum"  % SimulacrumVersion % Provided,
       // For testing
@@ -340,15 +359,73 @@ lazy val catsEffect = crossProject(JSPlatform, JVMPlatform)
 lazy val catsEffectJVM = catsEffect.jvm
 lazy val catsEffectJS = catsEffect.js
 
-lazy val examples = crossProject(JSPlatform, JVMPlatform)
+// examples
+
+// lazy val examples = crossProject(JSPlatform, JVMPlatform)
+//   .crossType(CrossType.Full)
+//   .in(file("examples"))
+//   .configureCross(defaultCrossProjectConfiguration)
+//   .settings(
+//     name := "examples"
+//   )
+//   .settings(doNotPublishArtifact)
+//   .dependsOn(zio, catsEffect)
+
+// lazy val examplesJVM = examples.jvm
+// lazy val examplesJS = examples.js
+
+// download example
+
+lazy val zioDownloadExample = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Full)
-  .in(file("examples"))
+  .in(file("examples/zio/download"))
   .configureCross(defaultCrossProjectConfiguration)
   .settings(
-    name := "examples"
+    name := "zio-download-example",
+    graalVMNativeImageOptions ++= Seq(
+      "--initialize-at-build-time",
+      "--no-fallback"
+    )
   )
   .settings(doNotPublishArtifact)
-  .dependsOn(zio, catsEffect)
+  .dependsOn(zio)
+  .enablePlugins(GraalVMNativeImagePlugin)
+
+lazy val zioDownloadExampleJVM = zioDownloadExample.jvm
+lazy val zioDownloadExampleJS = zioDownloadExample.js
+
+lazy val catsEffectDownloadExample = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Full)
+  .in(file("examples/cats-effect/download"))
+  .configureCross(defaultCrossProjectConfiguration)
+  .settings(
+    name                            := "cats-effect-download-example",
+    scalaJSUseMainModuleInitializer := true
+  )
+  .settings(doNotPublishArtifact)
+  .dependsOn(catsEffect)
+
+lazy val catsEffectDownloadExampleJVM = catsEffectDownloadExample.jvm
+lazy val catsEffectDownloadExampleJS = catsEffectDownloadExample.js
+
+// finebars example
+lazy val zioFinebarsExample = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Full)
+  .in(file("examples/zio/finebars"))
+  .configureCross(defaultCrossProjectConfiguration)
+  .settings(
+    name := "zio-finebars-example",
+    graalVMNativeImageOptions ++= Seq(
+      "--initialize-at-build-time",
+      "--no-fallback"
+    )
+  )
+  .settings(doNotPublishArtifact)
+  .dependsOn(zio)
+  .enablePlugins(GraalVMNativeImagePlugin)
+
+lazy val zioFinebarsExampleJVM = zioFinebarsExample.jvm
+lazy val zioFinebarsExampleJS = zioFinebarsExample.js
 
 // Reloads build.sbt changes whenever detected
 Global / onChangedBuildSource := ReloadOnSourceChanges

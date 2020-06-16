@@ -26,7 +26,13 @@ object Parser {
   def elapsed_precise[_: P]: P[Key] = P("elapsed_precise").map(_ => Key.ElapsedPrecise)
   def elapsed[_: P]: P[Key] = P("elapsed").map(_ => Key.Elapsed)
   def prefix[_: P]: P[Key] = P("prefix").map(_ => Key.Prefix)
-  def key[_: P]: P[Key] = P(spinner | msg | elapsed_precise | elapsed | prefix)
+  def bar[_: P]: P[Key] = P("bar").map(_ => Key.Bar)
+  def length[_: P]: P[Key] = P("len").map(_ => Key.Length)
+  def position[_: P]: P[Key] = P("pos").map(_ => Key.Position)
+  def eta[_: P]: P[Key] = P("eta").map(_ => Key.Eta)
+  def etaPrecise[_: P]: P[Key] = P("eta_precise").map(_ => Key.EtaPrecise)
+  def key[_: P]: P[Key] =
+    P(spinner | msg | elapsed_precise | elapsed | prefix | bar | length | position | etaPrecise | eta)
 
   // Foreground Color
   def black[_: P]: P[ForegroundColor] = P("black").map(_ => ForegroundColor.Black)
@@ -36,9 +42,22 @@ object Parser {
   def magenta[_: P]: P[ForegroundColor] = P("magenta").map(_ => ForegroundColor.Magenta)
   def white[_: P]: P[ForegroundColor] = P("white").map(_ => ForegroundColor.White)
   def blue[_: P]: P[ForegroundColor] = P("blue").map(_ => ForegroundColor.Blue)
+  def cyan[_: P]: P[ForegroundColor] = P("cyan").map(_ => ForegroundColor.Cyan)
+  def brightRed[_: P]: P[ForegroundColor] = P("bright_red").map(_ => ForegroundColor.BrightRed)
+  def brightGreen[_: P]: P[ForegroundColor] = P("bright_green").map(_ => ForegroundColor.BrightGreen)
+  def brightYellow[_: P]: P[ForegroundColor] = P("bright_yellow").map(_ => ForegroundColor.BrightYellow)
+  def brightMagenta[_: P]: P[ForegroundColor] = P("bright_magenta").map(_ => ForegroundColor.BrightMagenta)
+  def brightBlue[_: P]: P[ForegroundColor] = P("bright_blue").map(_ => ForegroundColor.BrightBlue)
+  def brightCyan[_: P]: P[ForegroundColor] = P("bright_cyan").map(_ => ForegroundColor.BrightCyan)
+  def darkGray[_: P]: P[ForegroundColor] = P("dark_gray").map(_ => ForegroundColor.DarkGray)
+  def lightGray[_: P]: P[ForegroundColor] = P("light_gray").map(_ => ForegroundColor.LightGray)
 
   def foregroundColor[_: P]: P[ForegroundColor] =
-    P(black | red | green | yellow | blue | magenta | white)
+    P(
+      black | red | green | yellow | blue | magenta | white | cyan
+        | brightRed | brightGreen | brightYellow | brightMagenta | brightBlue | brightCyan
+        | darkGray | lightGray
+    )
 
 // Background Color
   def onBlack[_: P]: P[BackgroundColor] = P("on_black").map(_ => BackgroundColor.Black)
@@ -48,9 +67,23 @@ object Parser {
   def onMagenta[_: P]: P[BackgroundColor] = P("on_magenta").map(_ => BackgroundColor.Magenta)
   def onWhite[_: P]: P[BackgroundColor] = P("on_white").map(_ => BackgroundColor.White)
   def onBlue[_: P]: P[BackgroundColor] = P("on_blue").map(_ => BackgroundColor.Blue)
+  def onCyan[_: P]: P[BackgroundColor] = P("on_cyan").map(_ => BackgroundColor.Cyan)
+
+  def onBrightRed[_: P]: P[BackgroundColor] = P("on_bright_red").map(_ => BackgroundColor.BrightRed)
+  def onBrightGreen[_: P]: P[BackgroundColor] = P("on_bright_green").map(_ => BackgroundColor.BrightGreen)
+  def onBrightYellow[_: P]: P[BackgroundColor] = P("on_bright_yellow").map(_ => BackgroundColor.BrightYellow)
+  def onBrightMagenta[_: P]: P[BackgroundColor] = P("on_bright_magenta").map(_ => BackgroundColor.BrightMagenta)
+  def onBrightBlue[_: P]: P[BackgroundColor] = P("on_bright_blue").map(_ => BackgroundColor.BrightBlue)
+  def onBrightCyan[_: P]: P[BackgroundColor] = P("on_bright_cyan").map(_ => BackgroundColor.BrightCyan)
+  def onDarkGray[_: P]: P[BackgroundColor] = P("on_dark_gray").map(_ => BackgroundColor.DarkGray)
+  def onLightGray[_: P]: P[BackgroundColor] = P("on_light_gray").map(_ => BackgroundColor.LightGray)
 
   def backgroundColor[_: P]: P[BackgroundColor] =
-    P(onBlack | onRed | onGreen | onYellow | onBlue | onMagenta | onWhite)
+    P(
+      onBlack | onRed | onGreen | onYellow | onBlue | onMagenta | onWhite | onCyan
+        | onBrightRed | onBrightGreen | onBrightYellow | onBrightBlue | onBrightCyan
+        | onDarkGray | onLightGray
+    )
 
   // Alignment
   def left[_: P]: P[Alignment] = P("<").map(_ => Alignment.Left)
@@ -63,13 +96,17 @@ object Parser {
 
   // Attribute
   def bold[_: P]: P[Attribute] = P("bold").map(_ => Attribute.Bold)
-  def dim[_: P]: P[Attribute] = P("dim").map(_ => Attribute.Dim)
   def underlined[_: P]: P[Attribute] = P("underlined").map(_ => Attribute.Underlined)
-  def slowBlink[_: P]: P[Attribute] = P("slow_blink").map(_ => Attribute.SlowBlink)
-  def rapidBlink[_: P]: P[Attribute] = P("rapid_blink").map(_ => Attribute.RapidBlink)
   def reverse[_: P]: P[Attribute] = P("reverse").map(_ => Attribute.Reverse)
-  def hidden[_: P]: P[Attribute] = P("hidden").map(_ => Attribute.Hidden)
-  def attribute[_: P]: P[Attribute] = P(bold | dim | underlined | slowBlink | rapidBlink | reverse | hidden)
+  // def dim[_: P]: P[Attribute] = P("dim").map(_ => Attribute.Dim)
+  // def slowBlink[_: P]: P[Attribute] = P("slow_blink").map(_ => Attribute.SlowBlink)
+  // def rapidBlink[_: P]: P[Attribute] = P("rapid_blink").map(_ => Attribute.RapidBlink)
+  // def hidden[_: P]: P[Attribute] = P("hidden").map(_ => Attribute.Hidden)
+  def attribute[_: P]: P[Attribute] =
+    P(
+      bold | underlined | reverse
+      // |  slowBlink | rapidBlink | hidden | dim
+    )
 
   // Style
   def style[_: P] =

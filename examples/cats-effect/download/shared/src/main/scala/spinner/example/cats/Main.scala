@@ -15,21 +15,16 @@
  * limitations under the License.
  */
 
-package spinner.example.zio
+package spinner.example.cats
 
-import zio.console._
-import zio.IO
-import zio.Schedule
-import zio.duration.Duration
-import java.util.concurrent.TimeUnit
-import spinner.zio.Spinner
+import cats.effect._
+import scala.concurrent.duration._
+import spinner.cats.Spinner
+import spinner.cats.State
 
-object Main extends zio.App {
+object Main extends IOApp {
 
-  def run(args: List[String]) =
-    myAppLogic.exitCode
-
-  val myAppLogic = {
+  def program(args: List[String]): IO[ExitCode] = {
     import spinner.template.interpolator._
     val indicator1 = Spinner(
       spinner = "⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈ ",
@@ -39,11 +34,7 @@ object Main extends zio.App {
     )
 
     val indicator2 = Spinner(
-      spinner = List( "🙈 ",
-        "🙈 ",
-        "🙉 ",
-        "🙊 "
-      ),
+      spinner = List("🙈 ", "🙈 ", "🙉 ", "🙊 "),
       template = template"{prefix:} {spinner:} {msg:<.green.rapid_blink} {elapsed_precise:.blue}",
       message = "",
       prefix = "[2/3]"
@@ -65,24 +56,29 @@ object Main extends zio.App {
       message = "Spinning...",
       prefix = "[3/3]"
     )
+
     for {
-      _ <- putStrLn("Starting spinner!")
-      _ <- indicator1.spin(IO.none.repeat(Schedule.duration(Duration(3, TimeUnit.SECONDS))))
-      _ <- putStrLn("")
-      _ <- indicator2.spinWithState { state =>
+      _ <- IO(println(args))
+      _ <- IO(println("Starting spinner!"))
+      _ <- indicator1.spin(IO.sleep(1.second))
+      _ <- IO(println(""))
+      _ <- indicator2.spinWithState { state: State[IO] =>
         for {
           _ <- state.updateMessage("1st effect")
-          _ <- IO.none.repeat(Schedule.duration(Duration(1, TimeUnit.SECONDS)))
+          _ <- IO.sleep(1.second)
           _ <- state.updateMessage("2nd effect")
-          _ <- IO.none.repeat(Schedule.duration(Duration(1, TimeUnit.SECONDS)))
+          _ <- IO.sleep(1.second)
           _ <- state.updateMessage("3rd effect")
-          _ <- IO.none.repeat(Schedule.duration(Duration(1, TimeUnit.SECONDS)))
+          _ <- IO.sleep(1.second)
         } yield ()
       }
-      _ <- putStrLn("")
-      _ <- indicator3.spin(IO.none.repeat(Schedule.duration(Duration(5, TimeUnit.SECONDS))))
+      _ <- IO(println(""))
+      _ <- indicator3.spin(IO.sleep(5.second))
 
-      _ <- putStrLn(s"\nDone")
-    } yield ()
+      _ <- IO(println("Done"))
+    } yield ExitCode.Success
   }
+
+  override def run(args: List[String]): IO[ExitCode] =
+    program(args)
 }

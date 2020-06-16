@@ -19,34 +19,41 @@ package spinner.ansi
 
 trait Attribute {
   def toAnsiCode: String
+  def toFansi: fansi.Attr
 }
 
 object Attribute {
   final case object Reset extends Attribute {
     override def toAnsiCode: String = Console.RESET
+    override def toFansi: fansi.Attr = fansi.Attr.Reset
   }
   final case object Bold extends Attribute {
     override def toAnsiCode: String = Console.BOLD
+    override def toFansi: fansi.Attr = fansi.Bold.On
   }
-  final case object Dim extends Attribute {
-    override def toAnsiCode: String = "\u001b[2m"
-  }
-  final case object Italic extends Attribute {
-    override def toAnsiCode: String = "\u001b[3m"
-  }
+  // final case object Dim extends Attribute {
+  //   override def toAnsiCode: String = "\u001b[2m"
+  //   override def toFansi: fansi.Attr = fansi.Attr.
+  // }
+  // final case object Italic extends Attribute {
+  // override def toAnsiCode: String = "\u001b[3m"
+  // }
   final case object Underlined extends Attribute {
     override def toAnsiCode: String = Console.UNDERLINED
+    override def toFansi: fansi.Attr = fansi.Underlined.On
   }
-  final case object SlowBlink extends Attribute {
-    override def toAnsiCode: String = Console.BLINK
-  }
-  final case object RapidBlink extends Attribute {
-    override def toAnsiCode: String = "\u001b[6m"
-  }
+  // final case object SlowBlink extends Attribute {
+  //   override def toAnsiCode: String = Console.BLINK
+  // }
+  // final case object RapidBlink extends Attribute {
+  //   override def toAnsiCode: String = "\u001b[6m"
+  // }
   final case object Reverse extends Attribute {
     override def toAnsiCode: String = Console.REVERSED
+    override def toFansi: fansi.Attr = fansi.Reversed.On
+
   }
-  final case object Hidden extends Attribute {
-    override def toAnsiCode: String = Console.INVISIBLE
-  }
+  // final case object Hidden extends Attribute {
+  // override def toAnsiCode: String = Console.INVISIBLE
+  // }
 }

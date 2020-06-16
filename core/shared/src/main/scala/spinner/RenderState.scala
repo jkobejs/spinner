@@ -21,5 +21,8 @@ private[spinner] case class RenderState(
   elapsed: Long,
   spinner: String,
   message: String,
-  prefix: String
+  prefix: String,
+  progressChars: Array[Char],
+  position: Int,
+  len: Int
 )

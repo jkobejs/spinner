@@ -62,7 +62,11 @@ final class Spinner private (
               elapsed = currentTime - startedAt,
               spinner = style.spinner(innerState.index),
               message = innerState.message,
-              prefix = prefix))))
+              prefix = prefix,
+              progressChars = Array(),
+              position = 0,
+              len = 0
+            ))))
       nextIndex = (innerState.index + 1) % (style.spinner.length)
       _ <- ref.set(innerState.copy(index = nextIndex))
       _ <- timer.sleep(100.milli)
@@ -74,10 +78,16 @@ object Spinner {
   def default(): Spinner = new Spinner(SpinnerStyle.default, InnerState(0, ""), "")
 
   def apply(spinner: String, template: Template, message: String = "", prefix: String = ""): Spinner =
-    new Spinner(SpinnerStyle(spinner.toCharArray().map(_.toString).toSeq, template), InnerState(0, message), prefix)
+    new Spinner(
+      SpinnerStyle(spinner.toCharArray().map(_.toString).toSeq, template, progressChars = Array('#', '#', '-')),
+      InnerState(0, message),
+      prefix)
 
   def apply(spinner: Seq[String], template: Template, message: String, prefix: String): Spinner =
-    new Spinner(SpinnerStyle(spinner, template), InnerState(0, message), prefix: String)
+    new Spinner(
+      SpinnerStyle(spinner, template, progressChars = Array('#', '#', '-')),
+      InnerState(0, message),
+      prefix: String)
 
 }
 

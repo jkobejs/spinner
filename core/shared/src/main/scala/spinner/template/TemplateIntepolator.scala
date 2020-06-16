@@ -25,6 +25,7 @@ object interpolator {
 
   object TemplateInterpolator extends Interpolator {
     type Output = Template
+    type Input = String
 
     def contextualize(interpolation: StaticInterpolation): Seq[ContextType] = {
       val lit @ Literal(_, templateString) = interpolation.parts.head
