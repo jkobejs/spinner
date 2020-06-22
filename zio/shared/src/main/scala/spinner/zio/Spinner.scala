@@ -265,18 +265,37 @@ case class ProgresBar private (
   def finishWithMessage(message: String): URIO[Clock with Console, Unit] =
     updateAndDraw(s => s.copy(pos = s.len, message = message, finished = true))
 
+  /** Print a log line above the progress bar.
+    *
+    * If the progress bar was added to a [[MultiProgress]], the log line will be
+    * printed above all other progress bars.
+    *
+    * @param message
+    */
   def println(message: String): URIO[Clock with Console, Unit] =
     for {
       s <- state.get
-      lines = Seq(message)
+      lines = message.split("\n")
       _ <- s.draw(lines)
     } yield ()
 
   def isFinished(): UIO[Boolean] =
     state.get.map(_.finished)
 
+  /** Spawns a background fiber to tick the progress bar.
+    *
+    * When this is enabled a background thread will regularly tick the
+    * progress back in the given interval (milliseconds).  This is
+    * useful to advance progress bars that are very slow by themselves.
+    *
+    * When steady ticks are enabled calling `.tick()` on a progress
+    * bar does not do anything.
+    *
+    * @param miliseconds
+    */
   def enableSteadyTick(miliseconds: Long) =
     for {
+      // TODO: Check if it is already running
       fiber <- (for {
         _ <- clock.sleep(Duration(miliseconds, TimeUnit.MILLISECONDS))
         _ <- updateAndDraw(s => s.copy(tick = s.tick + 1))
@@ -335,7 +354,7 @@ object ProgresBar {
       drawTarget = DrawTarget.Single(None)
     )
 
-  def defaultSpinner: Builder =
+  val defaultSpinner: Builder =
     Builder(
       style = SpinnerStyle.defaultSpinner.build(),
       len = 0,

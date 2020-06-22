@@ -29,7 +29,7 @@ object Main extends zio.App {
 
   val myAppLogic = {
     for {
-      pb <- ProgresBar.create(1024)
+      pb <- ProgresBar.defaultBar(1024).build()
       _  <- ZIO.foreach(0 until 1024)(_ => pb.advance(1) *> clock.sleep(Duration(5, TimeUnit.MILLISECONDS)))
       _  <- pb.finishWithMessage("done")
     } yield ()

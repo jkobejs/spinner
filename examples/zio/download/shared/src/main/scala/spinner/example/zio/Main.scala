@@ -20,6 +20,9 @@ package spinner.example.zio
 import zio.duration.Duration
 import java.util.concurrent.TimeUnit
 import spinner.zio._
+import zio._
+import spinner.SpinnerStyle
+import spinner.template.interpolator._
 
 object Main extends zio.App {
 
@@ -27,35 +30,25 @@ object Main extends zio.App {
     myAppLogic.exitCode
 
   val myAppLogic = {
-    import spinner.template.interpolator._
 
-    val totalSize = 231023385
-
-    def download(totalSize: Int): State => zio.ZIO[zio.clock.Clock, Nothing, Unit] =
-      state =>
-        for {
-          ref <- zio.ZRef.make(0)
-          _ <- (for {
-            downloaded <- ref.get
-            newPosition = Math.min(downloaded + 223211, totalSize)
-            _ <- state.updatePosition(newPosition)
-            _ <- zio.clock.sleep(Duration(12, TimeUnit.MILLISECONDS))
-            _ <- ref.set(newPosition)
-          } yield newPosition).doWhile(_ < totalSize)
-        } yield ()
-
-    val progressBarSpinnerBuilder =
-      ProgressBar.builder { download(totalSize) }
-        .withTemplate(template"{spinner:4.green} [{elapsed_precise:8}] [{bar:40.cyan}] {pos:>}/{len:} {eta:}")
-        .withLen(totalSize)
-        .withProgressChars("#>-")
-    val mpParallel = MultiProgressBar
-      .builder()
-      .withHeader("Download")
-      .progressBar(progressBarSpinnerBuilder.build)
+    val totalSize = 231023385L
 
     for {
-      _ <- mpParallel.start()
+      pb <- ProgresBar
+        .defaultBar(totalSize)
+        .withStyle(
+          SpinnerStyle.defaultBar
+            .withProgressChars("#>-")
+            .withTemplate(template"{spinner:.green} [{elapsed_precise:8}] [{bar:40.cyan}] {pos:}/{len:} {eta:}")
+            .build())
+        .build()
+      downloaded <- Ref.make(0L)
+      _ <- (for {
+        newPosition <- downloaded.updateAndGet(d => Math.min(d + 223211L, totalSize))
+        _           <- clock.sleep(Duration(12, TimeUnit.MILLISECONDS))
+        _           <- pb.setPosition(newPosition)
+      } yield newPosition).doWhile(_ < totalSize)
+      _ <- pb.finishWithMessage("downloaded")
     } yield ()
   }
 }

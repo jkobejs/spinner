@@ -56,6 +56,20 @@ object SpinnerStyle {
       progressChars = Array('█', '░')
     )
 
+  val defaultBar: Builder =
+    Builder(
+      spinner = "⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈ ".toCharArray().map(_.toString).toSeq,
+      template = Template(
+        Seq(
+          TemplateElement.Var(Key.Bar, width = Some(20)),
+          TemplateElement.Val(" "),
+          TemplateElement.Var(Key.Position),
+          TemplateElement.Val("/"),
+          TemplateElement.Var(Key.Length)
+        )),
+      progressChars = Array('█', '░')
+    )
+
   val defaultSpinner: Builder =
     Builder(
       spinner = "⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈ ".toCharArray().map(_.toString).toSeq,
