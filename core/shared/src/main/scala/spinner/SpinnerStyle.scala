@@ -26,18 +26,45 @@ case class SpinnerStyle private (
 )
 
 object SpinnerStyle {
+  case class Builder(
+    spinner: Seq[String],
+    template: Template,
+    progressChars: Array[Char]
+  ) {
+    def withSpinner(spinnerString: String) = copy(spinner = spinnerString.toCharArray().map(_.toString).toSeq)
+    def withSpinner(spinner: Seq[String]) = copy(spinner = spinner)
+    def withTemplate(template: Template) = copy(template = template)
+    def withProgressChars(progressChars: String) = copy(progressChars = progressChars.toCharArray())
+
+    def build() = SpinnerStyle(
+      spinner = spinner,
+      template = template,
+      progressChars = progressChars
+    )
+  }
   val default: SpinnerStyle =
     SpinnerStyle(
       spinner = "⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈ ".toCharArray().map(_.toString).toSeq,
       template = Template(
         Seq(
-          TemplateElement.Var(Key.Prefix),
+          TemplateElement.Var(Key.Bar, width = Some(20)),
+          TemplateElement.Val(" "),
+          TemplateElement.Var(Key.Position),
+          TemplateElement.Val("/"),
+          TemplateElement.Var(Key.Length)
+        )),
+      progressChars = Array('█', '░')
+    )
+
+  val defaultSpinner: Builder =
+    Builder(
+      spinner = "⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈ ".toCharArray().map(_.toString).toSeq,
+      template = Template(
+        Seq(
           TemplateElement.Var(Key.Spinner),
           TemplateElement.Val(" "),
-          TemplateElement.Var(Key.Message),
-          TemplateElement.Val(" Elapsed: "),
-          TemplateElement.Var(Key.Elapsed)
+          TemplateElement.Var(Key.Message)
         )),
-      progressChars = Array('#', '#', '-')
+      progressChars = Array('█', '░')
     )
 }

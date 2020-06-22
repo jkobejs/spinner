@@ -232,7 +232,13 @@ lazy val root = project
     catsEffectDownloadExampleJVM,
     catsEffectDownloadExampleJS,
     zioFinebarsExampleJVM,
-    zioFinebarsExampleJS
+    zioFinebarsExampleJS,
+    zioSingleExampleJVM,
+    zioSingleExampleJS,
+    zioLogExampleJVM,
+    zioLogExampleJS,
+    zioLongSpinnerExampleJVM,
+    zioLongSpinnerExampleJS
   )
   .configure(defaultPlugins)
   .settings(sharedSettings)
@@ -426,6 +432,63 @@ lazy val zioFinebarsExample = crossProject(JSPlatform, JVMPlatform)
 
 lazy val zioFinebarsExampleJVM = zioFinebarsExample.jvm
 lazy val zioFinebarsExampleJS = zioFinebarsExample.js
+
+// single example
+lazy val zioSingleExample = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Full)
+  .in(file("examples/zio/single"))
+  .configureCross(defaultCrossProjectConfiguration)
+  .settings(
+    name := "zio-single-example",
+    graalVMNativeImageOptions ++= Seq(
+      "--initialize-at-build-time",
+      "--no-fallback"
+    )
+  )
+  .settings(doNotPublishArtifact)
+  .dependsOn(zio)
+  .enablePlugins(GraalVMNativeImagePlugin)
+
+lazy val zioSingleExampleJVM = zioSingleExample.jvm
+lazy val zioSingleExampleJS = zioSingleExample.js
+
+// log example
+lazy val zioLogExample = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Full)
+  .in(file("examples/zio/log"))
+  .configureCross(defaultCrossProjectConfiguration)
+  .settings(
+    name := "zio-log-example",
+    graalVMNativeImageOptions ++= Seq(
+      "--initialize-at-build-time",
+      "--no-fallback"
+    )
+  )
+  .settings(doNotPublishArtifact)
+  .dependsOn(zio)
+  .enablePlugins(GraalVMNativeImagePlugin)
+
+lazy val zioLogExampleJVM = zioLogExample.jvm
+lazy val zioLogExampleJS = zioLogExample.js
+
+// long spinner example
+lazy val zioLongSpinnerExample = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Full)
+  .in(file("examples/zio/long-spinner"))
+  .configureCross(defaultCrossProjectConfiguration)
+  .settings(
+    name := "zio-log-example",
+    graalVMNativeImageOptions ++= Seq(
+      "--initialize-at-build-time",
+      "--no-fallback"
+    )
+  )
+  .settings(doNotPublishArtifact)
+  .dependsOn(zio)
+  .enablePlugins(GraalVMNativeImagePlugin)
+
+lazy val zioLongSpinnerExampleJVM = zioLongSpinnerExample.jvm
+lazy val zioLongSpinnerExampleJS = zioLongSpinnerExample.js
 
 // Reloads build.sbt changes whenever detected
 Global / onChangedBuildSource := ReloadOnSourceChanges

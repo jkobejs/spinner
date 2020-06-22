@@ -38,13 +38,13 @@ final case class Template(
             variable.render(formatHumanReadable(renderState.elapsed))
           case Key.Prefix => variable.render(renderState.prefix)
           case Key.Bar =>
-            val currentPosition = ((renderState.position / renderState.len.toDouble) * variable.width)
+            val currentPosition = ((renderState.position / renderState.len.toDouble) * variable.width.getOrElse(20))
             val n = Math.max(0, renderState.progressChars.length - 2)
             val currentProgressCharPosition = if (n == 0) 1 else ((n - (n * currentPosition).toInt % n) - 1)
             val message = renderState.progressChars.head.toString * currentPosition.toInt + renderState
               .progressChars(currentProgressCharPosition)
               .toString + (renderState.progressChars.last
-              .toString()) * (variable.width - currentPosition.toInt)
+              .toString()) * (variable.width.getOrElse(20) - currentPosition.toInt)
             variable.render(message)
           case Key.Position => variable.render(renderState.position.toString)
           case Key.Length => variable.render(renderState.len.toString)
@@ -97,7 +97,7 @@ object TemplateElement {
   final case class Var(
     key: Key,
     align: Alignment = Alignment.Left,
-    width: Int = 20,
+    width: Option[Int] = None,
     style: Style = Style.empty()
   ) extends TemplateElement {
 
@@ -116,8 +116,9 @@ object TemplateElement {
     }
 
     private def alignMessage(message: String): String = {
-      val truncated = message.take(width)
-      val diff = width - truncated.size
+      val wdth = width.getOrElse(message.size)
+      val truncated = message.take(wdth)
+      val diff = wdth - truncated.size
 
       align match {
         case Alignment.Left => truncated + (" " * diff)

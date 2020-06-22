@@ -24,11 +24,16 @@ import spinner.RenderState
 import spinner.SpinnerStyle
 import spinner.ansi.Navigation
 import spinner.template.Template
+import scala.collection.mutable
+import zio.clock.Clock
+import zio.console.Console
+import spinner.ansi.Clear
 
 final class State private[zio] (private val inner: Ref[InnerState]) {
   def updateMessage(message: String) = inner.update(_.copy(message = message))
   def updatePosition(position: Int) = inner.update(_.copy(position = position))
   def update(message: String, position: Int) = inner.update(_.copy(message = message, position = position))
+  def queue: Queue[Unit] = ???
 }
 
 private final case class InnerState(
@@ -190,4 +195,284 @@ object MultiProgressBar {
 
     def start() = build().start()
   }
+}
+
+case class ProgresBar private (
+  state: Ref[ProgressState]
+) {
+
+  /**
+    * Manually ticks the spinner or progress bar.
+    *
+    * @return
+    */
+  def tick(): URIO[Clock with Console, Unit] =
+    updateAndDraw(s => s.incTick())
+
+  /**
+    * Advances position of a progress bar by delta.
+    *
+    * @param delta
+    */
+  def advance(delta: Long): URIO[Clock with Console, Unit] =
+    updateAndDraw(s => s.advance(delta).incTick())
+
+  /**
+    * Sets position to given value.
+    *
+    * @param position
+    */
+  def setPosition(position: Long): URIO[Clock with Console, Unit] =
+    updateAndDraw(_.copy(pos = position).incTick())
+
+  /**
+    * Sets prefix to given value.
+    *
+    * For the prefix to be visible, `{prefix}` placeholder
+    * must be present in the template.
+    *
+    * @param prefix
+    */
+  def setPrefix(prefix: String): URIO[Clock with Console, Unit] =
+    updateAndDraw(_.copy(prefix = prefix).incTick())
+
+  /**
+    * Sets message to given value.
+    *
+    * For the message to be visible, `{msg}` placeholder
+    * must be present in the template.
+    *
+    * @param message
+    */
+  def setMessage(message: String): URIO[Clock with Console, Unit] =
+    updateAndDraw(_.copy(message = message))
+
+  /**
+    * Finishes the progress bar and leaves the current message.
+    *
+    * For the message to be visible, `{msg}` placeholder
+    * must be present in the template
+    */
+  def finish(): URIO[Clock with Console, Unit] =
+    updateAndDraw(s => s.copy(pos = s.len, finished = true))
+
+  /**
+    * Finishes the progress bar and sets a message.
+    *
+    * @param message
+    * @return
+    */
+  def finishWithMessage(message: String): URIO[Clock with Console, Unit] =
+    updateAndDraw(s => s.copy(pos = s.len, message = message, finished = true))
+
+  def println(message: String): URIO[Clock with Console, Unit] =
+    for {
+      s <- state.get
+      lines = Seq(message)
+      _ <- s.draw(lines)
+    } yield ()
+
+  def isFinished(): UIO[Boolean] =
+    state.get.map(_.finished)
+
+  def enableSteadyTick(miliseconds: Long) =
+    for {
+      fiber <- (for {
+        _ <- clock.sleep(Duration(miliseconds, TimeUnit.MILLISECONDS))
+        _ <- updateAndDraw(s => s.copy(tick = s.tick + 1))
+      } yield ()).doWhileM(_ => isFinished().map(f => !f)).fork
+      _ <- state.update(_.copy(tickFiber = Some(fiber)))
+      _ <- tick()
+    } yield ()
+
+  private def updateAndDraw(update: ProgressState => ProgressState): URIO[Clock with Console, Unit] =
+    for {
+      updatedState <- state.updateAndGet(update)
+      _            <- updatedState.draw()
+    } yield ()
+
+}
+
+object ProgresBar {
+  case class Builder private (
+    style: SpinnerStyle,
+    len: Long,
+    message: String,
+    drawTarget: DrawTarget
+  ) {
+    def withMessage(message: String) = copy(message = message)
+    def withStyle(style: SpinnerStyle) = copy(style = style)
+    def withDrawTarget(drawTarget: DrawTarget) = copy(drawTarget = drawTarget)
+    def withLen(len: Long) = copy(len = len)
+
+    def build(): URIO[Clock, ProgresBar] =
+      for {
+        currentTime <- clock.currentTime(TimeUnit.MILLISECONDS)
+        state = ProgressState(
+          style = this.style,
+          pos = 0,
+          len = this.len,
+          tick = 0,
+          started = currentTime,
+          drawTarget = this.drawTarget,
+          width = None,
+          message = this.message,
+          prefix = "",
+          estimate = 0,
+          steadyTick = 0,
+          finished = false,
+          tickFiber = None
+        )
+        stateRef <- Ref.make(state)
+      } yield ProgresBar(stateRef)
+  }
+
+  def defaultBar(len: Long): Builder =
+    Builder(
+      style = SpinnerStyle.default,
+      len = len,
+      message = "",
+      drawTarget = DrawTarget.Single(None)
+    )
+
+  def defaultSpinner: Builder =
+    Builder(
+      style = SpinnerStyle.defaultSpinner.build(),
+      len = 0,
+      message = "",
+      drawTarget = DrawTarget.Single(None)
+    )
+}
+
+case class ProgressState(
+  style: SpinnerStyle,
+  pos: Long,
+  len: Long,
+  tick: Int,
+  started: Long,
+  drawTarget: DrawTarget,
+  width: Option[Int],
+  message: String,
+  prefix: String,
+  estimate: Long,
+  steadyTick: Long,
+  finished: Boolean,
+  tickFiber: Option[Fiber.Runtime[Nothing, Unit]]
+) {
+  def currentTickString(): String =
+    if (finished)
+      style.spinner.lastOption.getOrElse("")
+    else style.spinner(tick % (style.spinner.size - 1))
+
+  def fraction(): Double =
+    ((pos, len) match {
+      case (_, 0) => 1.0
+      case (0, _) => 0.0
+      case (pos, len) => pos / len.toDouble
+    }).max(0.0).min(1.0)
+
+  // TODO: Take care of overflow
+  private[spinner] def incTick() = if (steadyTick == 0 || tick == 0) copy(tick = tick + 1) else this
+
+  // TODO: Take care of overflow
+  private[spinner] def advance(delta: Long) = copy(pos = (pos + delta))
+
+  private[spinner] def draw(orphanLines: Seq[String] = Nil): URIO[Clock with Console, Unit] =
+    for {
+      currentTime <- clock.currentTime(TimeUnit.MILLISECONDS)
+      _ <- drawTarget.draw(
+        ProgressDrawState(
+          lines = orphanLines ++ Seq(
+            style.template.render(RenderState(
+              elapsed = currentTime - started,
+              prefix = prefix,
+              spinner = currentTickString(),
+              message = message,
+              progressChars = style.progressChars,
+              position = pos.toInt,
+              len = len.toInt
+            ))),
+          orphanLines = orphanLines.size,
+          finished = false,
+          forceDraw = false,
+          moveCursor = false,
+          timestamp = 0
+        )
+      )
+    } yield ()
+}
+
+case class MultiBar(
+  states: Ref[mutable.ArrayBuffer[ProgressDrawState]],
+  ordering: Seq[Int],
+  stateQueue: Queue[(Int, ProgressDrawState)]
+) {
+  def join() =
+    (for {
+      idWithState <- stateQueue.take
+      _           <- states.modify(arrayBuffer => (arrayBuffer.insert(idWithState._1, idWithState._2), arrayBuffer))
+    } yield ()).doWhileM(_ => states.get.map(_.exists(state => !state.finished)))
+}
+
+object MultiBar {
+  def create() =
+    for {
+      queue  <- Queue.bounded[(Int, ProgressDrawState)](32)
+      states <- Ref.make(mutable.ArrayBuffer.empty[ProgressDrawState])
+    } yield MultiBar(states = states, ordering = Nil, stateQueue = queue)
+}
+
+case class ProgressDrawState(
+  /// The lines to print (can contain ANSI codes)
+  lines: Seq[String],
+  /// The number of lines that shouldn't be reaped by the next tick.
+  orphanLines: Int,
+  /// True if the bar no longer needs drawing.
+  finished: Boolean,
+  /// True if drawing should be forced.
+  forceDraw: Boolean,
+  /// True if we should move the cursor up when possible instead of clearing lines.
+  moveCursor: Boolean,
+  /// Time when the draw state was created.
+  timestamp: Long
+) {
+  def moveCursorUp() = {
+    if (moveCursor)
+      console.putStr(Navigation.Up(lines.size - orphanLines).toAnsiCode)
+    else UIO.unit
+  }
+
+  def clearOutput() = {
+    val numOfLines = lines.size - orphanLines
+    console.putStr(
+      Navigation
+        .Up(numOfLines)
+        .toAnsiCode + (Clear.EntireLine.toAnsiCode + Navigation.Down(1).toAnsiCode) * numOfLines +
+        Navigation.Up(numOfLines).toAnsiCode)
+  }
+
+  def write() = {
+    console.putStrLn(lines.mkString("\n"))
+  }
+}
+
+sealed trait DrawTarget {
+  import spinner.zio.DrawTarget._
+
+  def draw(state: ProgressDrawState): URIO[Console, Unit] = {
+    this match {
+      case Single(_) =>
+        (if (state.moveCursor)
+           state.moveCursorUp()
+         else
+           state.clearOutput) *> state.write()
+      case Multi(index, sendQueue) =>
+        sendQueue.offer((index, state)) *> UIO.unit
+    }
+  }
+}
+
+object DrawTarget {
+  case class Single(lastState: Option[ProgressDrawState]) extends DrawTarget
+  case class Multi(index: Int, sendQueue: Queue[(Int, ProgressDrawState)]) extends DrawTarget
 }

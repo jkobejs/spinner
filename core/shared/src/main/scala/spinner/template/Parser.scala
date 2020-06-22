@@ -120,7 +120,7 @@ object Parser {
       TemplateElement.Var(
         key = key,
         align = alignmentOpt.getOrElse(Alignment.Left),
-        width = widthOpt.getOrElse(20),
+        width = widthOpt,
         style = styleOpt.getOrElse(Style.empty())
       )
   }

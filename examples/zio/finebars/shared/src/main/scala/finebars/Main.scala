@@ -30,6 +30,44 @@ object Main extends zio.App {
   val myAppLogic = {
     import spinner.template.interpolator._
 
+    // val mp = MultiProgress()
+    // for {
+    //   pb <- mp.add(ProgressBar.new(5))
+    //   _ <- ZIO.foreach(0 until 5) { _ =>
+    //     for {
+    //       pb2 <- mp.add(ProgressBar::new(128))
+    //       -   <- ZIO.foreach(0 until 128) { _ =>
+    //           for {
+    //             _ <- pb2.inc(1)
+    //             _ <- clock.sleep(5.millis)
+    //           } yield ()
+    //       _ <- pb2.finish()
+    //       _ <- pb.inc(1)
+    //     } yield ()
+    //   }
+    //   _ <- pb.finishWithMessage("Done")
+    //   _ <- mp.join()
+    // } yield ()
+
+    // val mp = MultiProgress()
+
+    // for {
+    //   _ <- ZIO.foreach(styles) { style =>
+    //     for {
+    //       pb   <- mp.add(ProgressBar.new(512))
+    //       wait <- zio.random.nextLongBetween(10, 20)
+    //       _ <- ZIO.foreach(0 until 512) { i =>
+    //         for {
+    //           _ <- pb.inc(1)
+    //           _ <- pb.set_message("")
+    //           _ < clock.sleep(wait)
+    //         } yield ()
+    //           }
+    //       pb.finishWithMessage("100%")
+    //     } yield ()
+    //   }
+    // } yield ()
+
     val styles = Seq(
       ("Rough bar:", "█  ", template"{prefix:.bold} ▕{bar:.red}▏{msg:}"),
       ("Fine bar: ", "█▉▊▋▌▍▎▏  ", template"{prefix:.bold} ▕{bar:.yellow}▏{msg:}"),
