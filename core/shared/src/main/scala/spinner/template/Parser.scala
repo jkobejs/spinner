@@ -31,8 +31,12 @@ object Parser {
   def position[_: P]: P[Key] = P("pos").map(_ => Key.Position)
   def eta[_: P]: P[Key] = P("eta").map(_ => Key.Eta)
   def etaPrecise[_: P]: P[Key] = P("eta_precise").map(_ => Key.EtaPrecise)
+  def bytes[_: P]: P[Key] = P("bytes").map(_ => Key.Bytes)
+  def totalBytes[_: P]: P[Key] = P("total_bytes").map(_ => Key.TotalBytes)
   def key[_: P]: P[Key] =
-    P(spinner | msg | elapsed_precise | elapsed | prefix | bar | length | position | etaPrecise | eta)
+    P(
+      spinner | msg | elapsed_precise | elapsed | prefix | bar | length
+        | position | etaPrecise | eta | totalBytes | bytes)
 
   // Foreground Color
   def black[_: P]: P[ForegroundColor] = P("black").map(_ => ForegroundColor.Black)
@@ -115,13 +119,20 @@ object Parser {
     }
 
   // Variable
-  def variable[_: P]: P[TemplateElement] = P("{" ~ key ~ ":" ~ alignment.? ~ width.? ~ style.? ~ "}").map {
-    case (key, alignmentOpt, widthOpt, styleOpt) =>
+  def variable[_: P]: P[TemplateElement] = P("{" ~ key ~ (":" ~ alignment.? ~ width.? ~ style.?).? ~ "}").map {
+    case (key, Some((alignmentOpt, widthOpt, styleOpt))) =>
       TemplateElement.Var(
         key = key,
         align = alignmentOpt.getOrElse(Alignment.Left),
         width = widthOpt,
         style = styleOpt.getOrElse(Style.empty())
+      )
+    case (key, _) =>
+      TemplateElement.Var(
+        key = key,
+        align = Alignment.Left,
+        width = None,
+        style = Style.empty()
       )
   }
 

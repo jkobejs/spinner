@@ -19,7 +19,6 @@ package spinner.template
 
 import spinner.RenderState
 import spinner.ansi._
-import java.util.concurrent.TimeUnit
 
 final case class Template(
   elements: Seq[TemplateElement]
@@ -33,9 +32,9 @@ final case class Template(
           case Key.Message => variable.render(renderState.message)
           case Key.ElapsedPrecise =>
             val millis = renderState.elapsed
-            variable.render(formatPrecise(millis))
+            variable.render(Formatting.preciseTime(millis))
           case Key.Elapsed =>
-            variable.render(formatHumanReadable(renderState.elapsed))
+            variable.render(Formatting.humanReadableTime(renderState.elapsed))
           case Key.Prefix => variable.render(renderState.prefix)
           case Key.Bar =>
             val currentPosition = ((renderState.position / renderState.len.toDouble) * variable.width.getOrElse(20))
@@ -50,14 +49,18 @@ final case class Template(
           case Key.Length => variable.render(renderState.len.toString)
           case Key.Eta =>
             val eta = calculateEta(renderState)
-            variable.render(formatHumanReadable(eta))
+            variable.render(Formatting.humanReadableTime(eta))
           case Key.EtaPrecise =>
             if (renderState.elapsed > 1000) {
               val eta = calculateEta(renderState)
-              variable.render(formatPrecise(eta))
+              variable.render(Formatting.preciseTime(eta))
             } else {
               variable.render("")
             }
+          case Key.Bytes =>
+            variable.render(Formatting.humanReadableSizeSI(renderState.position.toLong))
+          case Key.TotalBytes =>
+            variable.render(Formatting.humanReadableSizeSI(renderState.len.toLong))
 
         }
     }.mkString(Clear.ToBeginningOfLine.toAnsiCode + Navigation.Left(1000).toAnsiCode, "", "")
@@ -68,25 +71,6 @@ final case class Template(
     val secondsPerPercent = renderState.elapsed / (percentage * 100)
     (secondsPerPercent * ((1 - percentage) * 100)).toLong
   }
-
-  private def formatHumanReadable(timestamp: Long): String = {
-    val hours = TimeUnit.MILLISECONDS.toHours(timestamp)
-    val minutes = TimeUnit.MILLISECONDS.toMinutes(timestamp) - TimeUnit.HOURS.toMinutes(
-      TimeUnit.MILLISECONDS.toHours(timestamp))
-    val seconds = TimeUnit.MILLISECONDS.toSeconds(timestamp) - TimeUnit.MINUTES.toSeconds(
-      TimeUnit.MILLISECONDS.toMinutes(timestamp))
-    Seq(if (hours > 0) hours + "h" else "", if (minutes > 0) minutes + "m" else "", seconds + "s")
-      .filter(_.nonEmpty)
-      .mkString(" ")
-  }
-
-  private def formatPrecise(timestamp: Long): String =
-    "%02d:%02d:%02d".format(
-      TimeUnit.MILLISECONDS.toHours(timestamp),
-      TimeUnit.MILLISECONDS.toMinutes(timestamp) - TimeUnit.HOURS.toMinutes(TimeUnit.MILLISECONDS.toHours(timestamp)),
-      TimeUnit.MILLISECONDS.toSeconds(timestamp) - TimeUnit.MINUTES.toSeconds(
-        TimeUnit.MILLISECONDS.toMinutes(timestamp))
-    )
 }
 
 sealed trait TemplateElement
@@ -150,6 +134,8 @@ object Key {
   final case object Length extends Key
   final case object Eta extends Key
   final case object EtaPrecise extends Key
+  final case object Bytes extends Key
+  final case object TotalBytes extends Key
 }
 
 case class Style(

@@ -31,7 +31,7 @@ object Main extends zio.App {
 
   val myAppLogic = {
 
-    val totalSize = 231023385L
+    val totalSize = 231231231L
 
     for {
       pb <- ProgresBar
@@ -39,7 +39,7 @@ object Main extends zio.App {
         .withStyle(
           SpinnerStyle.defaultBar
             .withProgressChars("#>-")
-            .withTemplate(template"{spinner:.green} [{elapsed_precise:8}] [{bar:40.cyan}] {pos:}/{len:} {eta:}")
+            .withTemplate(template"{spinner:.green} [{elapsed_precise:8}] [{bar:40.cyan}] {bytes}/{total_bytes} {eta}")
             .build())
         .build()
       downloaded <- Ref.make(0L)
