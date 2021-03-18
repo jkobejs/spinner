@@ -38,7 +38,7 @@ object Main extends zio.App {
         .withStyle(
           SpinnerStyle.defaultBar
             .withProgressChars("█▇▆▅▄▃▂▁  ")
-            .withTemplate("{spinner:.green} [{elapsed_precise:8}] [{bar:10.cyan}] {bytes:>8}/{total_bytes:8} {eta:4}")
+            .withTemplate("{spinner:.green} [{elapsed_precise:8}] {bar:10.cyan} {bytes:>8}/{total_bytes:8} {eta:4}")
             .build())
         .build()
       downloaded <- Ref.make(0L)
