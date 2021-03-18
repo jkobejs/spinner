@@ -19,57 +19,67 @@ package spinner.template
 
 import spinner.RenderState
 import spinner.ansi._
+import spinner.ProgressState
 
 final case class Template(
   elements: Seq[TemplateElement]
 ) {
-  def render(renderState: RenderState): String = {
+
+  def render(renderState: ProgressState): String = {
     elements.map {
       case TemplateElement.Val(value) => value
       case variable: TemplateElement.Var =>
         variable.key match {
-          case Key.Spinner => variable.render(renderState.spinner)
+          case Key.Spinner => variable.render(renderState.currentTickString())
           case Key.Message => variable.render(renderState.message)
           case Key.ElapsedPrecise =>
-            val millis = renderState.elapsed
-            variable.render(Formatting.preciseTime(millis))
+            variable.render(Formatting.preciseTime(renderState.elapsed()))
           case Key.Elapsed =>
-            variable.render(Formatting.humanReadableTime(renderState.elapsed))
+            variable.render(Formatting.humanReadableTime(renderState.elapsed()))
           case Key.Prefix => variable.render(renderState.prefix)
           case Key.Bar =>
-            val currentPosition = ((renderState.position / renderState.len.toDouble) * variable.width.getOrElse(20))
-            val n = Math.max(0, renderState.progressChars.length - 2)
-            val currentProgressCharPosition = if (n == 0) 1 else ((n - (n * currentPosition).toInt % n) - 1)
-            val message = renderState.progressChars.head.toString * currentPosition.toInt + renderState
-              .progressChars(currentProgressCharPosition)
-              .toString + (renderState.progressChars.last
-              .toString()) * (variable.width.getOrElse(20) - currentPosition.toInt)
+            val width = variable.width.getOrElse(20)
+            val fraction = renderState.fraction()
+            val completed = (width * fraction).toInt
+
+            // val drawCurrent = (fraction > 0.0 && completed < width)
+
+            val currentChar = renderState.style.progressChars(renderState.currentProgressCharIndex()).toString()
+
+            // val currentChar = if (drawCurrent) {
+            //   val currentCharsSize = Math.max(renderState.style.progressChars.size - 2, 0)
+
+            //   val currentCharPosition =
+            //     if (currentCharsSize > 0) {
+            //       currentCharsSize - (fraction * width * currentCharsSize).toInt % currentCharsSize
+            //     } else {
+            //       1
+            //     }
+            //   renderState.style.progressChars(currentCharPosition).toString
+            // } else ""
+
+            val remaining = width - completed - currentChar.size
+            val message = renderState.style.progressChars.head.toString * completed + currentChar + renderState.style.progressChars.last.toString * remaining
             variable.render(message)
-          case Key.Position => variable.render(renderState.position.toString)
+          case Key.Position => variable.render(renderState.pos.toString)
           case Key.Length => variable.render(renderState.len.toString)
           case Key.Eta =>
-            val eta = calculateEta(renderState)
+            val eta = renderState.eta()
             variable.render(Formatting.humanReadableTime(eta))
           case Key.EtaPrecise =>
-            if (renderState.elapsed > 1000) {
-              val eta = calculateEta(renderState)
+            if (renderState.elapsed() > 1000) {
+              val eta = renderState.eta()
               variable.render(Formatting.preciseTime(eta))
             } else {
               variable.render("")
             }
           case Key.Bytes =>
-            variable.render(Formatting.humanReadableSizeSI(renderState.position.toLong))
+            variable.render(Formatting.humanReadableSizeSI(renderState.pos.toLong))
           case Key.TotalBytes =>
             variable.render(Formatting.humanReadableSizeSI(renderState.len.toLong))
 
         }
     }.mkString(Clear.ToBeginningOfLine.toAnsiCode + Navigation.Left(1000).toAnsiCode, "", "")
-  }
-
-  private def calculateEta(renderState: RenderState): Long = {
-    val percentage = renderState.position / renderState.len.toDouble
-    val secondsPerPercent = renderState.elapsed / (percentage * 100)
-    (secondsPerPercent * ((1 - percentage) * 100)).toLong
   }
 }
 

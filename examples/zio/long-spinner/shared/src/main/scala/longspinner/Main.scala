@@ -19,10 +19,9 @@ package longspinner
 
 import zio.duration.Duration
 import java.util.concurrent.TimeUnit
-import spinner.zio._
+import spinner._
 import zio._
 import spinner.SpinnerStyle
-import spinner.template.interpolator._
 
 object Main extends zio.App {
 
@@ -37,7 +36,7 @@ object Main extends zio.App {
             .withSpinner(
               Seq("▹▹▹▹▹", "▸▹▹▹▹", "▹▸▹▹▹", "▹▹▸▹▹", "▹▹▹▸▹", "▹▹▹▹▸", "▪▪▪▪▪")
             )
-            .withTemplate(template"{spinner:.blue} {msg:}")
+            .withTemplate("{spinner:.blue} {msg:}")
             .build())
         .build()
       _ <- pb.enableSteadyTick(120)

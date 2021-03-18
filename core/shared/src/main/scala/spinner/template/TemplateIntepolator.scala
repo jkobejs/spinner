@@ -17,29 +17,29 @@
 
 package spinner.template
 
-import contextual._
-import fastparse.parse
-import fastparse.Parsed
+// import contextual._
+// import fastparse.parse
+// import fastparse.Parsed
 
 object interpolator {
 
-  object TemplateInterpolator extends Interpolator {
-    type Output = Template
-    type Input = String
+  // object TemplateInterpolator extends Interpolator {
+  //   type Output = Template
+  //   type Input = String
 
-    def contextualize(interpolation: StaticInterpolation): Seq[ContextType] = {
-      val lit @ Literal(_, templateString) = interpolation.parts.head
+  //   def contextualize(interpolation: StaticInterpolation): Seq[ContextType] = {
+  //     val lit @ Literal(_, templateString) = interpolation.parts.head
 
-      parse(templateString, Parser.template(_), verboseFailures = true) match {
-        case f @ Parsed.Failure(_, _, _) =>
-          interpolation.abort(lit, 0, f.trace().longMsg)
-        case _ => Nil
-      }
-    }
+  //     parse(templateString, Parser.template(_), verboseFailures = true) match {
+  //       case f @ Parsed.Failure(_, _, _) =>
+  //         interpolation.abort(lit, 0, f.trace().longMsg)
+  //       case _ => Nil
+  //     }
+  //   }
 
-    def evaluate(interpolation: RuntimeInterpolation): Template =
-      parse(interpolation.literals.head, Parser.template(_)).get.value
-  }
+  //   def evaluate(interpolation: RuntimeInterpolation): Template =
+  //     parse(interpolation.literals.head, Parser.template(_)).get.value
+  // }
 
-  implicit class TemplateContext(sc: StringContext) { val template = Prefix(TemplateInterpolator, sc) }
+  // implicit class TemplateContext(sc: StringContext) { val template = Prefix(TemplateInterpolator, sc) }
 }

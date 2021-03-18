@@ -18,6 +18,11 @@
 package spinner
 
 import spinner.template._
+import fastparse.parse
+import fastparse.Parsed
+
+case class ProgressChars(
+  )
 
 case class SpinnerStyle private (
   spinner: Seq[String],
@@ -34,6 +39,18 @@ object SpinnerStyle {
     def withSpinner(spinnerString: String) = copy(spinner = spinnerString.toCharArray().map(_.toString).toSeq)
     def withSpinner(spinner: Seq[String]) = copy(spinner = spinner)
     def withTemplate(template: Template) = copy(template = template)
+    def withTemplate(template: String) = {
+
+      val tmplate =
+        parse(template, Parser.template(_)) match {
+          case Parsed.Failure(_, _, _) =>
+            Template(Seq(TemplateElement.Val(template)))
+
+          case Parsed.Success(template, _) => template
+        }
+
+      copy(template = tmplate)
+    }
     def withProgressChars(progressChars: String) = copy(progressChars = progressChars.toCharArray())
 
     def build() = SpinnerStyle(

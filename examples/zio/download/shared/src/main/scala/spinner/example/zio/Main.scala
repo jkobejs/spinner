@@ -19,10 +19,9 @@ package spinner.example.zio
 
 import zio.duration.Duration
 import java.util.concurrent.TimeUnit
-import spinner.zio._
+import spinner._
 import zio._
 import spinner.SpinnerStyle
-import spinner.template.interpolator._
 
 object Main extends zio.App {
 
@@ -31,21 +30,21 @@ object Main extends zio.App {
 
   val myAppLogic = {
 
-    val totalSize = 231231231L
+    val totalSize = 42L
 
     for {
       pb <- ProgresBar
         .defaultBar(totalSize)
         .withStyle(
           SpinnerStyle.defaultBar
-            .withProgressChars("#>-")
-            .withTemplate(template"{spinner:.green} [{elapsed_precise:8}] [{bar:40.cyan}] {bytes}/{total_bytes} {eta}")
+            .withProgressChars("█▇▆▅▄▃▂▁  ")
+            .withTemplate("{spinner:.green} [{elapsed_precise:8}] [{bar:10.cyan}] {bytes:>8}/{total_bytes:8} {eta:4}")
             .build())
         .build()
       downloaded <- Ref.make(0L)
       _ <- (for {
-        newPosition <- downloaded.updateAndGet(d => Math.min(d + 223211L, totalSize))
-        _           <- clock.sleep(Duration(12, TimeUnit.MILLISECONDS))
+        newPosition <- downloaded.updateAndGet(d => Math.min(d + 1L, totalSize))
+        _           <- clock.sleep(Duration(120, TimeUnit.MILLISECONDS))
         _           <- pb.setPosition(newPosition)
       } yield newPosition).doWhile(_ < totalSize)
       _ <- pb.finishWithMessage("downloaded")

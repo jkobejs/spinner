@@ -19,7 +19,7 @@ package single
 
 import zio.duration.Duration
 import java.util.concurrent.TimeUnit
-import spinner.zio._
+import spinner._
 import zio._
 
 object Main extends zio.App {

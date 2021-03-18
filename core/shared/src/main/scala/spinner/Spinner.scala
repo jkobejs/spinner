@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package spinner.zio
+package spinner
 
 import zio._
 import zio.duration.Duration
@@ -28,174 +28,6 @@ import scala.collection.mutable
 import zio.clock.Clock
 import zio.console.Console
 import spinner.ansi.Clear
-
-final class State private[zio] (private val inner: Ref[InnerState]) {
-  def updateMessage(message: String) = inner.update(_.copy(message = message))
-  def updatePosition(position: Int) = inner.update(_.copy(position = position))
-  def update(message: String, position: Int) = inner.update(_.copy(message = message, position = position))
-  def queue: Queue[Unit] = ???
-}
-
-private final case class InnerState(
-  index: Int = 0,
-  message: String = "",
-  done: Boolean = false,
-  elapsed: Long = 0,
-  style: SpinnerStyle = SpinnerStyle.default,
-  prefix: String = "",
-  position: Int = 0,
-  len: Int = 0
-)
-
-final class ProgressBar[-R, +E, +A] private (
-  val style: SpinnerStyle,
-  val handler: State => ZIO[R, E, A],
-  val message: String,
-  val prefix: String,
-  val len: Int,
-  val doneMessage: Option[String] = None,
-  val onErrorMessage: Option[String] = None
-)
-
-object ProgressBar {
-  def builder[R, E, A](handler: State => ZIO[R, E, A]) = Builder(handler = handler)
-  def builder[R, E, A](effect: ZIO[R, E, A]) = Builder(handler = _ => effect)
-
-  final case class Builder[-R, +E, +A] private[ProgressBar] (
-    style: SpinnerStyle = SpinnerStyle.default,
-    handler: State => ZIO[R, E, A],
-    message: String = "",
-    prefix: String = "",
-    len: Int = 1
-  ) {
-    def withMessage(message: String) = copy(message = message)
-    def withPrefix(prefix: String) = copy(prefix = prefix)
-    def withSpinner(spinner: String) = copy(style.copy(spinner = spinner.toCharArray().map(_.toString).toSeq))
-    def withSpinner(spinner: List[String]) = copy(style = style.copy(spinner = spinner))
-    def withTemplate(template: Template) = copy(style = style.copy(template = template))
-    def withProgressChars(chars: String) = {
-      copy(style = style.copy(progressChars = chars.toCharArray()))
-    }
-    def withLen(len: Int) = copy(len = len)
-    def build() = new ProgressBar(style = style, handler = handler, message = message, prefix = prefix, len = len)
-  }
-}
-
-final class MultiProgressBar[-R, +E, +A] private (
-  header: Option[String],
-  progressBars: Seq[ProgressBar[R, E, A]]
-) {
-  def start() = {
-    for {
-      _           <- printHeader()
-      _           <- createSpace()
-      refs        <- createStateRefs()
-      currentTime <- getCurrentTime()
-      fiber       <- startRenderLoop(refs, currentTime)
-      result      <- handleEffects(refs, currentTime)
-      _           <- fiber.join
-    } yield result
-  }
-
-  private def printHeader() =
-    header.map(h => console.putStrLn(h)).getOrElse(ZIO.unit)
-
-  private def createStateRefs(): UIO[Seq[Ref[InnerState]]] = {
-    ZIO.foreach(progressBars) { pb =>
-      ZRef.make(
-        InnerState(
-          message = pb.message,
-          style = pb.style,
-          prefix = pb.prefix,
-          position = 0,
-          len = pb.len
-        )
-      )
-    }
-  }
-  private def handleEffects(refs: Seq[Ref[InnerState]], currentTime: Long) =
-    ZIO.foreachPar(refs.zip(progressBars.map(_.handler))) {
-      case (ref, effectHandler) =>
-        runEffect(ref, effectHandler, currentTime)
-    }
-
-  private def getCurrentTime() =
-    clock.currentTime(TimeUnit.MILLISECONDS)
-
-  private def runEffect[R1 <: R, E1 >: E, A1 >: A](
-    ref: Ref[InnerState],
-    effectHandler: State => ZIO[R1, E1, A1],
-    startedAt: Long) =
-    for {
-      result      <- effectHandler(new State(ref))
-      currentTime <- getCurrentTime()
-      _           <- ref.update(_.copy(done = true, elapsed = currentTime - startedAt))
-    } yield result
-
-  private def startRenderLoop(refs: Seq[Ref[InnerState]], startedAt: Long) = {
-    renderAll(refs, startedAt)
-      .repeat(Schedule.doUntilM { _: Unit =>
-        ZIO.foreach(refs)(_.get).map(_.forall(_.done))
-      }.addDelay(_ => Duration(40, TimeUnit.MILLISECONDS)))
-      .fork
-  }
-
-  private def renderAll(refs: Seq[Ref[InnerState]], startedAt: Long) = {
-    (for {
-      _           <- moveToTop(refs.size)
-      currentTime <- clock.currentTime(TimeUnit.MILLISECONDS)
-      _           <- ZIO.foreach(refs)(ref => renderLine(ref, currentTime - startedAt))
-    } yield ())
-  }
-
-  private def renderLine(ref: Ref[InnerState], elapsed: Long) =
-    for {
-      innerState <- ref.get
-      style = innerState.style
-      _ <- console.putStrLn(
-        style.template.render(RenderState(
-          elapsed = if (innerState.done) innerState.elapsed else elapsed,
-          spinner = if (innerState.done) style.spinner.last else style.spinner(innerState.index),
-          message = innerState.message,
-          prefix = innerState.prefix,
-          progressChars = style.progressChars,
-          position = innerState.position,
-          len = innerState.len
-        )))
-      nextIndex = (innerState.index + 1) % (style.spinner.length)
-      _ <- if (innerState.done) ZIO.unit else ref.set(innerState.copy(index = nextIndex, elapsed = elapsed))
-    } yield ()
-
-  private def createSpace() =
-    console.putStr("\n" * progressBars.size)
-
-  private def moveToTop(steps: Int) =
-    console.putStr(Navigation.Up(steps).toAnsiCode)
-}
-
-object MultiProgressBar {
-  def builder[R, E, A]() = Builder[R, E, A](None, Nil)
-
-  final case class Builder[-R, +E, A] private[MultiProgressBar] (
-    header: Option[String],
-    progressBars: Seq[ProgressBar[R, E, A]]
-  ) {
-    def progressBar[R1 <: R, E1 >: E, A1 >: A](progresBar: ProgressBar[R1, E1, A1]) =
-      copy(progressBars = progressBars.:+(progresBar))
-
-    def progressBars[R1 <: R, E1 >: E, A1 >: A](progresBar: ProgressBar[R1, E1, A1], bars: ProgressBar[R1, E1, A1]*) =
-      copy(progressBars = progressBars.:+(progresBar) ++ bars)
-
-    def progressBars[R1 <: R, E1 >: E, A1 >: A](bars: ProgressBar[R1, E1, A1]*) =
-      copy(progressBars = progressBars ++ bars)
-
-    def withHeader(header: String) = copy(header = Some(header))
-
-    private def build() = new MultiProgressBar(header, progressBars)
-
-    def start() = build().start()
-  }
-}
 
 case class ProgresBar private (
   state: Ref[ProgressState]
@@ -279,6 +111,11 @@ case class ProgresBar private (
       _ <- s.draw(lines)
     } yield ()
 
+  /**
+    * Returns if progress bar is done.
+    *
+    * @return
+    */
   def isFinished(): UIO[Boolean] =
     state.get.map(_.finished)
 
@@ -306,7 +143,8 @@ case class ProgresBar private (
 
   private def updateAndDraw(update: ProgressState => ProgressState): URIO[Clock with Console, Unit] =
     for {
-      updatedState <- state.updateAndGet(update)
+      currentTime  <- clock.currentTime(TimeUnit.MILLISECONDS)
+      updatedState <- state.updateAndGet(update.andThen(_.copy(currentTime = currentTime)))
       _            <- updatedState.draw()
     } yield ()
 
@@ -333,6 +171,7 @@ object ProgresBar {
           len = this.len,
           tick = 0,
           started = currentTime,
+          currentTime = currentTime,
           drawTarget = this.drawTarget,
           width = None,
           message = this.message,
@@ -369,6 +208,7 @@ case class ProgressState(
   len: Long,
   tick: Int,
   started: Long,
+  currentTime: Long,
   drawTarget: DrawTarget,
   width: Option[Int],
   message: String,
@@ -390,26 +230,81 @@ case class ProgressState(
       case (pos, len) => pos / len.toDouble
     }).max(0.0).min(1.0)
 
+  def elapsed(): Long =
+    currentTime - started
+
+  def eta(): Long =
+    (elapsed() * ((1 - fraction()) / fraction())).toLong
+
+  /**
+    * Calculates index of current progress bar character that is used for fine grained bars.
+    *
+    * We want to support fine bars so lets explain what we want to do.
+    * Imagine that we are in ideal screnario where we have:
+    * - progress chars "█▇▆▅▄▃▂▁  " (size 10, completed character is '█', background character is ' ')
+    * - progress bar width 10
+    * - progress bar len 80
+    * - and that we are incrementing position by 1 until we reach the end
+    *
+    * Since width of bar is 10 and length of bar is 80 first completed character will be drawn when current position is 8,
+    * next one will be drawn when current position is 16 and so on until we reach 80.
+    * What we can observe is that we need 8 position increments to draw completed character so we can use those 8 increments
+    * to draw more fine grained drawing.
+    * Lets show how our progress bar will progress from position 40 to 49:
+    *  40 |█████     |
+    *  41 |█████▁    |
+    *  42 |█████▂    |
+    *  43 |█████▃    |
+    *  44 |█████▄    |
+    *  45 |█████▅    |
+    *  46 |█████▆    |
+    *  47 |█████▇    |
+    *  48 |██████    |
+    *  49 |██████▁   |
+    *
+    * Now imagine that we have not so ideal screnario:
+    * - progress chars "█▇▆▅▄▃▂▁  " (size 10, completed character is '█', background character is ' ')
+    * - progress bar width 10
+    * - progress bar len 40
+    * - and that we are incrementing position by 1 until we reach the end
+    *
+    * This configuration means that completed character will be drawn when position is multiple of four and that we have 4 seps
+    * for fine grained drawing of completed character
+    * Lets show how our progress bar will progress from position 20 to 45:
+    *  20 |█████     |
+    *  21 |█████▂    |
+    *  22 |█████▄    |
+    *  23 |█████▆    |
+    *  24 |██████    |
+    *  21 |██████▂   |
+    *
+    * @return Current progress bar characte
+    */
+  def currentProgressCharIndex(): Int = {
+    val currentProgressCharsSize = Math.max(0, style.progressChars.size - 2)
+
+    val filledProgress = (fraction() * width.getOrElse(10))
+
+    // Value that says how much of current progress char is completed so that we can pick right character
+    val currentCharFilledPercentage = filledProgress - filledProgress.intValue()
+
+    // Since we are picking from the end of array of current character we need to substract from progress char size
+    currentProgressCharsSize - (currentCharFilledPercentage * currentProgressCharsSize).toInt
+  }
+
   // TODO: Take care of overflow
   private[spinner] def incTick() = if (steadyTick == 0 || tick == 0) copy(tick = tick + 1) else this
 
   // TODO: Take care of overflow
   private[spinner] def advance(delta: Long) = copy(pos = (pos + delta))
 
-  private[spinner] def draw(orphanLines: Seq[String] = Nil): URIO[Clock with Console, Unit] =
+  private[spinner] def draw(orphanLines: Array[String] = Array.empty[String]): URIO[Console, Unit] =
     for {
-      currentTime <- clock.currentTime(TimeUnit.MILLISECONDS)
       _ <- drawTarget.draw(
         ProgressDrawState(
-          lines = orphanLines ++ Seq(
-            style.template.render(RenderState(
-              elapsed = currentTime - started,
-              prefix = prefix,
-              spinner = currentTickString(),
-              message = message,
-              progressChars = style.progressChars,
-              position = pos.toInt,
-              len = len.toInt
+          lines = orphanLines.:+(
+            (style.template.render(
+              this
             ))),
           orphanLines = orphanLines.size,
           finished = false,
@@ -443,7 +338,7 @@ object MultiBar {
 
 case class ProgressDrawState(
   /// The lines to print (can contain ANSI codes)
-  lines: Seq[String],
+  lines: Array[String],
   /// The number of lines that shouldn't be reaped by the next tick.
   orphanLines: Int,
   /// True if the bar no longer needs drawing.
@@ -476,7 +371,7 @@ case class ProgressDrawState(
 }
 
 sealed trait DrawTarget {
-  import spinner.zio.DrawTarget._
+  import spinner.DrawTarget._
 
   def draw(state: ProgressDrawState): URIO[Console, Unit] = {
     this match {

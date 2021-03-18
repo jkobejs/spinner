@@ -27,7 +27,7 @@ object Formatting {
       TimeUnit.MILLISECONDS.toHours(timestamp))
     val seconds = TimeUnit.MILLISECONDS.toSeconds(timestamp) - TimeUnit.MINUTES.toSeconds(
       TimeUnit.MILLISECONDS.toMinutes(timestamp))
-    Seq(if (hours > 0) hours + "h" else "", if (minutes > 0) minutes + "m" else "", seconds + "s")
+    Seq(if (hours > 0) s"${hours}h" else "", if (minutes > 0) s"${minutes}m" else "", s"${seconds}s")
       .filter(_.nonEmpty)
       .mkString(" ")
   }

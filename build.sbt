@@ -34,11 +34,6 @@ val MacroParadiseVersion = "2.1.0"
   */
 val ScalaCheckVersion = "1.14.3"
 
-/** Compiler plugin for working with partially applied types:
-  * [[https://github.com/typelevel/kind-projector]]
-  */
-val KindProjectorVersion = "0.11.0"
-
 /** Compiler plugin for fixing "for comprehensions" to do desugaring w/o `withFilter`:
   * [[https://github.com/typelevel/kind-projector]]
   */
@@ -52,27 +47,22 @@ val SilencerVersion = "1.6.0"
 /** A type-safe, composable library for async and concurrent programming in Scala
   * [[https://github.com/zio/zio]]
   */
-val ZioVersion = "1.0.0-RC20"
+val ZioVersion = "1.0.0-RC21"
 
 /** Fast to write, Fast running Parsers in Scala
   * [[https://github.com/lihaoyi/fastparse]]
   */
-val FastParseVersion = "2.2.2"
+val FastParseVersion = "2.3.0"
 
 /** Fansi is a Scala library to make it easy to deal with fancy colored Ansi strings within your command-line programs.
   * [[https://github.com/lihaoyi/fansi]]
   */
-val FansiVersion = "0.2.7"
+val FansiVersion = "0.2.9"
 
 /** Contextual is a small Scala library for defining your own string interpolators—prefixed string literals like url”https://propensive.com/”
   * [[https://github.com/propensive/contextual]]
   */
-val ContextualVersion = "1.2.1"
-
-/** The purely functional runtime system for Scala
-  * [[https://github.com/typelevel/cats-effect]]
-  */
-val CatsEffectVersion = "2.1.3"
+val ContextualVersion = "3.0.0"
 
 /**
   * Defines common plugins between all projects.
@@ -94,9 +84,8 @@ lazy val sharedSettings = Seq(
   githubOwnerID              := "jkobejs",
   githubRelativeRepositoryID := "spinner",
   organization               := "io.github.jkobejs",
-  // scalaVersion               := "2.13.1",
-  scalaVersion       := "2.12.10",
-  crossScalaVersions := Seq("2.12.10", "2.13.1"),
+  scalaVersion               := "2.13.2",
+  crossScalaVersions         := Seq("2.12.11", "2.13.2"),
   // More version specific compiler options
   scalacOptions ++= (CrossVersion.partialVersion(scalaVersion.value) match {
     case Some((2, v)) if v <= 12 =>
@@ -112,10 +101,9 @@ lazy val sharedSettings = Seq(
   // Turning off fatal warnings for doc generation
   scalacOptions.in(Compile, doc) ~= filterConsoleScalacOptions,
   // Silence all warnings from src_managed files
-  scalacOptions += "-P:silencer:pathFilters=.*[/]src_managed[/].*",
-  addCompilerPlugin("org.typelevel"                      % "kind-projector" % KindProjectorVersion cross CrossVersion.full),
+  // scalacOptions += "-P:silencer:pathFilters=.*[/]src_managed[/].*",
   addCompilerPlugin("com.olegpy" %% "better-monadic-for" % BetterMonadicForVersion),
-  addCompilerPlugin("com.github.ghik"                    % "silencer-plugin" % SilencerVersion cross CrossVersion.full),
+  // addCompilerPlugin("com.github.ghik"                    % "silencer-plugin" % SilencerVersion cross CrossVersion.full),
   // ScalaDoc settings
   autoAPIMappings := true,
   scalacOptions in ThisBuild ++= Seq(
@@ -171,7 +159,7 @@ lazy val sharedSettings = Seq(
     Developer(
       id = "jkobejs",
       name = "Josip Grgurica",
-      email = "jkobejs.dev@gmail.com",
+      email = "josip.grgurica@protonmail.com",
       url = url("https://jkobejs.github.io")
     )),
   // -- Settings meant for deployment on oss.sonatype.org
@@ -223,14 +211,8 @@ lazy val root = project
   .aggregate(
     coreJVM,
     coreJS,
-    zioJVM,
-    coreJVM,
-    catsEffectJS,
-    catsEffectJVM,
     zioDownloadExampleJVM,
     zioDownloadExampleJS,
-    catsEffectDownloadExampleJVM,
-    catsEffectDownloadExampleJS,
     zioFinebarsExampleJVM,
     zioFinebarsExampleJS,
     zioSingleExampleJVM,
@@ -261,7 +243,7 @@ lazy val site = project
     import microsites._
     Seq(
       micrositeName             := projectTitle.value,
-      micrositeDescription      := "I like when it Spinns!",
+      micrositeDescription      := "You spin me right round",
       micrositeAuthor           := "Josip Grgurica",
       micrositeTwitterCreator   := "@jkobejs",
       micrositeGithubOwner      := githubOwnerID.value,
@@ -317,102 +299,40 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
   .settings(
     name := "spinner-core",
     libraryDependencies ++= Seq(
-      "com.lihaoyi" %%% "fastparse"     % FastParseVersion,
-      "dev.zio" %% "zio"                % ZioVersion,
-      "com.propensive" %%% "contextual" % ContextualVersion,
-      "com.lihaoyi" %%% "fansi"         % FansiVersion,
-      "io.estatico" %%% "newtype"       % NewtypeVersion % Provided,
-      "org.typelevel" %%% "simulacrum"  % SimulacrumVersion % Provided,
+      "com.lihaoyi" %%% "fastparse" % FastParseVersion,
+      "com.lihaoyi" %%% "fansi"     % FansiVersion,
+      "dev.zio" %%% "zio"           % ZioVersion,
+      // "com.propensive" %%% "contextual" % ContextualVersion,
       // For testing
-      "dev.zio" %% "zio-test"     % ZioVersion % Test,
-      "dev.zio" %% "zio-test-sbt" % ZioVersion % Test
+      "dev.zio" %%% "zio-test"     % ZioVersion % Test,
+      "dev.zio" %%% "zio-test-sbt" % ZioVersion % Test
     )
   )
 
 lazy val coreJVM = core.jvm
 lazy val coreJS = core.js
 
-lazy val zio = crossProject(JSPlatform, JVMPlatform)
-  .crossType(CrossType.Full)
-  .in(file("zio"))
-  .configureCross(defaultCrossProjectConfiguration)
-  .settings(
-    name := "spinner-zio",
-    libraryDependencies ++= Seq(
-      "dev.zio" %% "zio" % ZioVersion,
-      // For testing
-      "dev.zio" %% "zio-test"     % ZioVersion % Test,
-      "dev.zio" %% "zio-test-sbt" % ZioVersion % Test
-    )
-  )
-  .dependsOn(core)
-
-lazy val zioJVM = zio.jvm
-lazy val zioJS = zio.js
-
-lazy val catsEffect = crossProject(JSPlatform, JVMPlatform)
-  .crossType(CrossType.Full)
-  .in(file("cats-effect"))
-  .configureCross(defaultCrossProjectConfiguration)
-  .settings(
-    name := "spinner-cats-effect",
-    libraryDependencies ++= Seq(
-      "org.typelevel" %%% "cats-effect" % CatsEffectVersion
-    )
-  )
-  .dependsOn(core)
-
-lazy val catsEffectJVM = catsEffect.jvm
-lazy val catsEffectJS = catsEffect.js
-
-// examples
-
-// lazy val examples = crossProject(JSPlatform, JVMPlatform)
-//   .crossType(CrossType.Full)
-//   .in(file("examples"))
-//   .configureCross(defaultCrossProjectConfiguration)
-//   .settings(
-//     name := "examples"
-//   )
-//   .settings(doNotPublishArtifact)
-//   .dependsOn(zio, catsEffect)
-
-// lazy val examplesJVM = examples.jvm
-// lazy val examplesJS = examples.js
-
-// download example
-
 lazy val zioDownloadExample = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Full)
   .in(file("examples/zio/download"))
   .configureCross(defaultCrossProjectConfiguration)
   .settings(
-    name := "zio-download-example",
+    name                            := "zio-download-example",
+    scalaJSUseMainModuleInitializer := true,
     graalVMNativeImageOptions ++= Seq(
       "--initialize-at-build-time",
       "--no-fallback"
+    ),
+    libraryDependencies ++= Seq(
+      "io.github.cquiroz" %%% "scala-java-time" % "2.0.0"
     )
   )
   .settings(doNotPublishArtifact)
-  .dependsOn(zio)
+  .dependsOn(core)
   .enablePlugins(GraalVMNativeImagePlugin)
 
 lazy val zioDownloadExampleJVM = zioDownloadExample.jvm
 lazy val zioDownloadExampleJS = zioDownloadExample.js
-
-lazy val catsEffectDownloadExample = crossProject(JSPlatform, JVMPlatform)
-  .crossType(CrossType.Full)
-  .in(file("examples/cats-effect/download"))
-  .configureCross(defaultCrossProjectConfiguration)
-  .settings(
-    name                            := "cats-effect-download-example",
-    scalaJSUseMainModuleInitializer := true
-  )
-  .settings(doNotPublishArtifact)
-  .dependsOn(catsEffect)
-
-lazy val catsEffectDownloadExampleJVM = catsEffectDownloadExample.jvm
-lazy val catsEffectDownloadExampleJS = catsEffectDownloadExample.js
 
 // finebars example
 lazy val zioFinebarsExample = crossProject(JSPlatform, JVMPlatform)
@@ -420,14 +340,18 @@ lazy val zioFinebarsExample = crossProject(JSPlatform, JVMPlatform)
   .in(file("examples/zio/finebars"))
   .configureCross(defaultCrossProjectConfiguration)
   .settings(
-    name := "zio-finebars-example",
+    name                            := "zio-finebars-example",
+    scalaJSUseMainModuleInitializer := true,
     graalVMNativeImageOptions ++= Seq(
       "--initialize-at-build-time",
       "--no-fallback"
+    ),
+    libraryDependencies ++= Seq(
+      "io.github.cquiroz" %%% "scala-java-time" % "2.0.0"
     )
   )
   .settings(doNotPublishArtifact)
-  .dependsOn(zio)
+  .dependsOn(core)
   .enablePlugins(GraalVMNativeImagePlugin)
 
 lazy val zioFinebarsExampleJVM = zioFinebarsExample.jvm
@@ -439,14 +363,18 @@ lazy val zioSingleExample = crossProject(JSPlatform, JVMPlatform)
   .in(file("examples/zio/single"))
   .configureCross(defaultCrossProjectConfiguration)
   .settings(
-    name := "zio-single-example",
+    name                            := "zio-single-example",
+    scalaJSUseMainModuleInitializer := true,
     graalVMNativeImageOptions ++= Seq(
       "--initialize-at-build-time",
       "--no-fallback"
+    ),
+    libraryDependencies ++= Seq(
+      "io.github.cquiroz" %%% "scala-java-time" % "2.0.0"
     )
   )
   .settings(doNotPublishArtifact)
-  .dependsOn(zio)
+  .dependsOn(core)
   .enablePlugins(GraalVMNativeImagePlugin)
 
 lazy val zioSingleExampleJVM = zioSingleExample.jvm
@@ -458,14 +386,18 @@ lazy val zioLogExample = crossProject(JSPlatform, JVMPlatform)
   .in(file("examples/zio/log"))
   .configureCross(defaultCrossProjectConfiguration)
   .settings(
-    name := "zio-log-example",
+    name                            := "zio-log-example",
+    scalaJSUseMainModuleInitializer := true,
     graalVMNativeImageOptions ++= Seq(
       "--initialize-at-build-time",
       "--no-fallback"
+    ),
+    libraryDependencies ++= Seq(
+      "io.github.cquiroz" %%% "scala-java-time" % "2.0.0"
     )
   )
   .settings(doNotPublishArtifact)
-  .dependsOn(zio)
+  .dependsOn(core)
   .enablePlugins(GraalVMNativeImagePlugin)
 
 lazy val zioLogExampleJVM = zioLogExample.jvm
@@ -477,14 +409,18 @@ lazy val zioLongSpinnerExample = crossProject(JSPlatform, JVMPlatform)
   .in(file("examples/zio/long-spinner"))
   .configureCross(defaultCrossProjectConfiguration)
   .settings(
-    name := "zio-log-example",
+    name                            := "zio-log-example",
+    scalaJSUseMainModuleInitializer := true,
     graalVMNativeImageOptions ++= Seq(
       "--initialize-at-build-time",
       "--no-fallback"
+    ),
+    libraryDependencies ++= Seq(
+      "io.github.cquiroz" %%% "scala-java-time" % "2.0.0"
     )
   )
   .settings(doNotPublishArtifact)
-  .dependsOn(zio)
+  .dependsOn(core)
   .enablePlugins(GraalVMNativeImagePlugin)
 
 lazy val zioLongSpinnerExampleJVM = zioLongSpinnerExample.jvm
