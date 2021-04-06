@@ -2,6 +2,8 @@
 
 [![Build](https://github.com/jkobejs/spinner/workflows/build/badge.svg?branch=master)](https://github.com/jkobejs/spinner/actions?query=branch%3Amaster+workflow%3Abuild) [![Release](https://github.com/jkobejs/spinner/workflows/release/badge.svg)](https://github.com/jkobejs/spinner/actions?query=workflow%3Arelease) [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.github.jkobejs/spinner-core_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.jkobejs/spinner-core_2.13)
 
+Rewrite of https://github.com/mitsuhiko/indicatif in Scala.
+
 ## Example
 [![asciicast](https://asciinema.org/a/WapSGZVey1nLTnO16UuXUqwuW.svg)](https://asciinema.org/a/WapSGZVey1nLTnO16UuXUqwuW)
 
